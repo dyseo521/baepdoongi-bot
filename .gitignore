@@ -1,0 +1,185 @@
+# ========================================
+# 환경 변수 및 시크릿 (중요!)
+# ========================================
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
+
+# AWS Credentials
+.aws/
+aws-exports.js
+aws-exports.ts
+
+# Slack tokens (실수로 파일에 저장된 경우)
+*token*
+*secret*
+!**/secrets-stack.ts
+!**/secrets.service.ts
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# Credentials files
+credentials.json
+service-account.json
+serviceAccountKey.json
+firebase-adminsdk*.json
+
+# ========================================
+# 의존성
+# ========================================
+node_modules/
+.pnpm-store/
+.yarn/
+.npm/
+
+# ========================================
+# 빌드 결과물
+# ========================================
+dist/
+build/
+*.js
+*.d.ts
+*.js.map
+*.d.ts.map
+
+# 예외: 설정 파일
+!jest.config.js
+!vite.config.ts
+!eslint.config.js
+!next.config.js
+!next.config.mjs
+!tailwind.config.js
+!tailwind.config.ts
+!postcss.config.js
+!postcss.config.mjs
+
+# Next.js
+.next/
+out/
+.vercel/
+
+# CDK
+cdk.out/
+.cdk.staging/
+cdk.context.json
+
+# ========================================
+# IDE 및 에디터
+# ========================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-*
+*.code-workspace
+
+# ========================================
+# OS 관련
+# ========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ========================================
+# 로그 및 디버그
+# ========================================
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ========================================
+# 테스트 및 커버리지
+# ========================================
+coverage/
+.nyc_output/
+*.lcov
+.coverage
+htmlcov/
+
+# ========================================
+# 임시 파일
+# ========================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# ========================================
+# 캐시
+# ========================================
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# ========================================
+# 데이터베이스 (로컬 개발용)
+# ========================================
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# ========================================
+# Claude Code 관련
+# ========================================
+.claude/
+.mcp.json
+fuzzy-cuddling-wozniak.md
+
+# ========================================
+# 생성된 파일
+# ========================================
+generated-diagrams/
+docs/*.png
+docs/*.jpg
+
+# ========================================
+# 기타 민감한 파일
+# ========================================
+# 암호화 키
+*.aes
+*.gpg
+
+# SSH 키
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
+
+# Terraform (있을 경우)
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Docker secrets
+docker-compose.override.yml
+.docker/
+
+# Kubernetes secrets
+*-secret.yaml
+*-secret.yml
+kubeconfig

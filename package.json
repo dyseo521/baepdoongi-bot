@@ -1,0 +1,42 @@
+{
+  "name": "baepdoongi-bot",
+  "version": "1.0.0",
+  "description": "IGRUS 슬랙봇 '뱁둥이' - 동아리 운영 자동화",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "dev:bot": "pnpm --filter @baepdoongi/bot dev",
+    "dev:dashboard": "pnpm --filter @baepdoongi/dashboard dev",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "cdk": "pnpm --filter @baepdoongi/infra cdk",
+    "cdk:deploy": "pnpm --filter @baepdoongi/infra cdk deploy --all",
+    "cdk:destroy": "pnpm --filter @baepdoongi/infra cdk destroy --all",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ]
+  }
+}
