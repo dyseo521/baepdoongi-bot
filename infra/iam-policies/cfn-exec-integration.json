@@ -1,0 +1,42 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SQS",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:CreateQueue",
+        "sqs:DeleteQueue",
+        "sqs:*QueueAttributes",
+        "sqs:GetQueueUrl",
+        "sqs:*Queue*Tag*"
+      ],
+      "Resource": ["arn:aws:sqs:*:*:baepdoongi-*"]
+    },
+    {
+      "Sid": "EventBridge",
+      "Effect": "Allow",
+      "Action": [
+        "events:*Rule",
+        "events:DescribeRule",
+        "events:*Targets",
+        "events:ListTargetsByRule",
+        "events:TagResource",
+        "events:UntagResource"
+      ],
+      "Resource": ["arn:aws:events:*:*:rule/Baepdoongi*"]
+    },
+    {
+      "Sid": "SES",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail",
+        "ses:*EmailIdentity",
+        "ses:TagResource",
+        "ses:UntagResource"
+      ],
+      "Resource": ["*"]
+    }
+  ]
+}
