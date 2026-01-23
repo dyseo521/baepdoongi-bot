@@ -74,7 +74,7 @@ jobs:
         run: pnpm --filter @baepdoongi/bot build
 
       - name: Upload bot artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bot-dist
           path: packages/bot/dist
@@ -110,7 +110,7 @@ jobs:
         run: pnpm --filter @baepdoongi/dashboard build
 
       - name: Upload dashboard artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: dashboard-dist
           path: packages/dashboard/.next
