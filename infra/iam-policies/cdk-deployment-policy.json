@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AssumeBootstrapRoles",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": [
+        "arn:aws:iam::*:role/cdk-hnb659fds-deploy-role-*",
+        "arn:aws:iam::*:role/cdk-hnb659fds-file-publishing-role-*",
+        "arn:aws:iam::*:role/cdk-hnb659fds-image-publishing-role-*",
+        "arn:aws:iam::*:role/cdk-hnb659fds-lookup-role-*"
+      ]
+    }
+  ]
+}

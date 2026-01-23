@@ -1,0 +1,44 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "IAMRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:*Role*",
+        "iam:*RolePolicy",
+        "iam:PassRole",
+        "iam:TagRole",
+        "iam:UntagRole"
+      ],
+      "Resource": ["arn:aws:iam::*:role/Baepdoongi*"]
+    },
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": ["logs:*LogGroup", "logs:DescribeLogGroups", "logs:*RetentionPolicy", "logs:*Tag*"],
+      "Resource": [
+        "arn:aws:logs:*:*:log-group:/aws/lambda/Baepdoongi*",
+        "arn:aws:logs:*:*:log-group:/aws/lambda/Baepdoongi*:*"
+      ]
+    },
+    {
+      "Sid": "SSM",
+      "Effect": "Allow",
+      "Action": ["ssm:*Parameter", "ssm:GetParameters", "ssm:*TagsToResource"],
+      "Resource": ["arn:aws:ssm:*:*:parameter/baepdoongi/*"]
+    },
+    {
+      "Sid": "Bedrock",
+      "Effect": "Allow",
+      "Action": ["bedrock:*KnowledgeBase", "bedrock:TagResource", "bedrock:UntagResource"],
+      "Resource": ["arn:aws:bedrock:*:*:knowledge-base/*"]
+    },
+    {
+      "Sid": "CloudFormation",
+      "Effect": "Allow",
+      "Action": ["cloudformation:Describe*", "cloudformation:GetTemplate", "cloudformation:ListStackResources"],
+      "Resource": ["arn:aws:cloudformation:*:*:stack/Baepdoongi*/*"]
+    }
+  ]
+}

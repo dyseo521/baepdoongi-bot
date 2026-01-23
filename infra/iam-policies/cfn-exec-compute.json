@@ -1,0 +1,35 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Lambda",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:*Function*",
+        "lambda:*Permission",
+        "lambda:*Tag*",
+        "lambda:InvokeFunction",
+        "lambda:PublishVersion",
+        "lambda:*Alias"
+      ],
+      "Resource": ["arn:aws:lambda:*:*:function:Baepdoongi*"]
+    },
+    {
+      "Sid": "APIGateway",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:PATCH",
+        "apigateway:DELETE",
+        "apigateway:TagResource",
+        "apigateway:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:*::/restapis",
+        "arn:aws:apigateway:*::/restapis/*"
+      ]
+    }
+  ]
+}
