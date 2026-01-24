@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, MapPin, Clock, Send, CheckCircle, Trash2, Pencil } from 'lucide-react';
-import { PageHeader } from '@/components/layout';
-import { DataTable, Badge, Button } from '@/components/ui';
+import { AuthLayout, PageHeader } from '@/components/layout';
+import { DataTable, Badge, Button, EventsPageSkeleton } from '@/components/ui';
 import { AnnounceModal, CreateEventModal, EditEventModal } from '@/components/events';
 import { fetchEvents, announceEvent, deleteEvent, createEvent, updateEvent } from '@/lib/api';
 import type { Event, EventResponseOption, EventType } from '@baepdoongi/shared';
@@ -24,17 +24,27 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function EventsPage() {
+  return (
+    <AuthLayout>
+      <EventsContent />
+    </AuthLayout>
+  );
+}
+
+function EventsContent() {
   const queryClient = useQueryClient();
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isAnnounceModalOpen, setIsAnnounceModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const { data: events = [], isLoading } = useQuery<Event[]>({
+  const { data: events = [], isLoading, isError, error } = useQuery<Event[]>({
     queryKey: ['events'],
     queryFn: fetchEvents,
+    retry: 1,
   });
 
+  // 모든 훅은 조건부 반환 전에 선언해야 함 (React Rules of Hooks)
   const announceMutation = useMutation({
     mutationFn: async ({
       eventId,
@@ -73,6 +83,23 @@ export default function EventsPage() {
       queryClient.invalidateQueries({ queryKey: ['events'] });
     },
   });
+
+  // 스켈레톤 로딩 표시
+  if (isLoading) {
+    return <EventsPageSkeleton />;
+  }
+
+  // 에러 표시
+  if (isError) {
+    return (
+      <div className="p-8">
+        <div className="card p-8 text-center">
+          <div className="text-red-500 mb-2">데이터를 불러오는데 실패했습니다</div>
+          <div className="text-sm text-gray-500">{(error as Error)?.message}</div>
+        </div>
+      </div>
+    );
+  }
 
   const handleDelete = async (eventId: string, title: string) => {
     if (confirm(`"${title}" 이벤트를 삭제하시겠습니까?`)) {

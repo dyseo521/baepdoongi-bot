@@ -27,11 +27,24 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
   useEffect(() => {
     if (isOpen) {
       setIsLoadingChannels(true);
-      fetch('/api/slack/channels')
-        .then((res) => res.json())
+      setError(null);
+
+      const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || '/api';
+
+      fetch(`${API_BASE_URL}/slack/channels`, {
+        credentials: 'include',
+      })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          return res.json();
+        })
         .then((data) => {
           if (Array.isArray(data)) {
             setChannels(data);
+          } else {
+            throw new Error('Invalid response format');
           }
         })
         .catch((err) => {
