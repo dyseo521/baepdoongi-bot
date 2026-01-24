@@ -61,6 +61,14 @@ export type LogType =
   | 'RAG_QUERY' // RAG 질문
   | 'RAG_RESPONSE' // RAG 응답 완료
   | 'RAG_ERROR' // RAG 오류
+  // 결제/가입 관련
+  | 'SUBMISSION_RECEIVE' // 지원서 수신
+  | 'DEPOSIT_RECEIVE' // 입금 수신
+  | 'PAYMENT_MATCH_AUTO' // 자동 매칭 성공
+  | 'PAYMENT_MATCH_MANUAL' // 수동 매칭
+  | 'PAYMENT_MATCH_FAILED' // 매칭 실패
+  | 'INVITE_EMAIL_SENT' // 초대 이메일 발송
+  | 'INVITE_EMAIL_FAILED' // 이메일 발송 실패
   // 시스템 관련
   | 'SYSTEM_START' // 봇 시작
   | 'SYSTEM_ERROR' // 시스템 오류
@@ -101,6 +109,14 @@ export const LOG_TYPE_LABELS: Record<LogType, string> = {
   RAG_QUERY: 'RAG 질문',
   RAG_RESPONSE: 'RAG 응답',
   RAG_ERROR: 'RAG 오류',
+  // 결제/가입 관련
+  SUBMISSION_RECEIVE: '지원서 수신',
+  DEPOSIT_RECEIVE: '입금 수신',
+  PAYMENT_MATCH_AUTO: '자동 매칭',
+  PAYMENT_MATCH_MANUAL: '수동 매칭',
+  PAYMENT_MATCH_FAILED: '매칭 실패',
+  INVITE_EMAIL_SENT: '초대 이메일 발송',
+  INVITE_EMAIL_FAILED: '이메일 발송 실패',
   // 시스템 관련
   SYSTEM_START: '봇 시작',
   SYSTEM_ERROR: '시스템 오류',
