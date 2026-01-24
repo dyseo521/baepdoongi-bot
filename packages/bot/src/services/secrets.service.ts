@@ -10,11 +10,16 @@ import {
   GetSecretValueCommand,
 } from '@aws-sdk/client-secrets-manager';
 
-/** Slack 관련 시크릿 타입 */
+/** 시크릿 타입 (Slack 토큰 + 기타) */
 export interface SlackSecrets {
   SLACK_BOT_TOKEN: string;
   SLACK_SIGNING_SECRET: string;
   SLACK_APP_TOKEN?: string; // Socket Mode용 (로컬 개발)
+  // 웹훅 시크릿
+  PAYMENT_WEBHOOK_SECRET?: string;
+  FORM_WEBHOOK_SECRET?: string;
+  // 대시보드 관리자 비밀번호
+  ADMIN_PASSWORD?: string;
 }
 
 // AWS 클라이언트 (싱글톤)
