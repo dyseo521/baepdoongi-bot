@@ -28,7 +28,7 @@ const tags = {
   ManagedBy: 'cdk',
 };
 
-// 1. 시크릿 스택 (Slack 토큰 등)
+// 1. 시크릿 스택 (Slack 토큰, 웹훅 시크릿, 관리자 비밀번호)
 const secretsStack = new SecretsStack(app, 'BaepdoongiSecretsStack', {
   env,
   tags,
@@ -49,17 +49,27 @@ const bedrockStack = new BedrockStack(app, 'BaepdoongiBedrockStack', {
   description: 'Bedrock Knowledge Base 및 S3 버킷',
 });
 
-// 4. 봇 스택 (Lambda, API Gateway, SQS)
+// 4. 대시보드 스택 (S3 + CloudFront 정적 호스팅)
+// 봇 스택보다 먼저 생성하여 CloudFront 도메인을 CORS에 사용
+const dashboardStack = new DashboardStack(app, 'BaepdoongiDashboardStack', {
+  env,
+  tags,
+  description: '관리자 대시보드 정적 호스팅 (CloudFront)',
+});
+
+// 5. 봇 스택 (Lambda, API Gateway, SQS)
+// Dashboard API + Slack 이벤트 + 웹훅 통합 처리
 const botStack = new BotStack(app, 'BaepdoongiBotStack', {
   env,
   tags,
-  description: 'Slack Bot Lambda 및 API Gateway',
+  description: 'Slack Bot + Dashboard API + 웹훅 통합 Lambda',
   table: databaseStack.table,
   slackSecret: secretsStack.slackSecret,
   knowledgeBucket: bedrockStack.knowledgeBucket,
+  dashboardDomain: dashboardStack.dashboardDomain,
 });
 
-// 5. 스케줄러 스택 (EventBridge)
+// 6. 스케줄러 스택 (EventBridge)
 const schedulerStack = new SchedulerStack(app, 'BaepdoongiSchedulerStack', {
   env,
   tags,
@@ -67,17 +77,11 @@ const schedulerStack = new SchedulerStack(app, 'BaepdoongiSchedulerStack', {
   nameCheckerLambda: botStack.nameCheckerLambda,
 });
 
-// 6. 대시보드 스택 (S3 정적 호스팅)
-const dashboardStack = new DashboardStack(app, 'BaepdoongiDashboardStack', {
-  env,
-  tags,
-  description: '관리자 대시보드 정적 호스팅',
-});
-
 // 스택 의존성 설정
 botStack.addDependency(secretsStack);
 botStack.addDependency(databaseStack);
 botStack.addDependency(bedrockStack);
+botStack.addDependency(dashboardStack); // CORS 설정을 위해 대시보드 스택 먼저
 schedulerStack.addDependency(botStack);
 
 app.synth();

@@ -36,7 +36,7 @@ export class BedrockStack extends cdk.Stack {
     const bedrockRole = new iam.Role(this, 'BedrockKnowledgeBaseRole', {
       roleName: 'baepdoongi-bedrock-kb-role',
       assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
-      description: 'Bedrock Knowledge Base S3 접근 역할',
+      description: 'Role for Bedrock Knowledge Base to access S3',
     });
 
     // S3 읽기 권한 부여
