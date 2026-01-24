@@ -2,7 +2,10 @@
  * Slack Bot 스택
  *
  * Lambda 함수, API Gateway, SQS를 포함합니다.
- * Slack 이벤트 수신 및 RAG 질문 처리를 담당합니다.
+ * - Slack 이벤트 수신
+ * - Dashboard API 제공
+ * - 외부 웹훅 처리 (Google Form, Tasker)
+ * - SES 이메일 발송
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -22,11 +25,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface BotStackProps extends cdk.StackProps {
   /** DynamoDB 테이블 */
-  table: dynamodb.Table;
+  table: dynamodb.ITable;
   /** Slack 시크릿 */
   slackSecret: secretsmanager.Secret;
   /** Knowledge Base S3 버킷 */
   knowledgeBucket: s3.Bucket;
+  /** Dashboard CloudFront 도메인 (CORS용) */
+  dashboardDomain?: string;
 }
 
 export class BotStack extends cdk.Stack {
@@ -36,11 +41,13 @@ export class BotStack extends cdk.Stack {
   public readonly ragLambda: lambda.Function;
   /** 이름 검사 Lambda */
   public readonly nameCheckerLambda: lambda.Function;
+  /** API Gateway */
+  public readonly api: apigateway.RestApi;
 
   constructor(scope: Construct, id: string, props: BotStackProps) {
     super(scope, id, props);
 
-    const { table, slackSecret, knowledgeBucket } = props;
+    const { table, slackSecret, knowledgeBucket, dashboardDomain } = props;
 
     // SQS 큐: RAG 비동기 처리용 (Slack 3초 제한 대응)
     const ragQueue = new sqs.Queue(this, 'RagQueue', {
@@ -56,10 +63,10 @@ export class BotStack extends cdk.Stack {
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
     };
 
-    // 메인 Bot Lambda (Slack 이벤트 핸들러)
+    // 메인 Bot Lambda (Slack 이벤트 + Dashboard API + 웹훅 통합 핸들러)
     this.botLambda = new lambda.Function(this, 'BotLambda', {
       functionName: 'baepdoongi-bot',
-      description: 'Slack Bolt 이벤트 핸들러',
+      description: 'Slack Bot + Dashboard API + 웹훅 통합 핸들러',
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'app.handler',
       code: lambda.Code.fromAsset(
@@ -70,6 +77,8 @@ export class BotStack extends cdk.Stack {
       environment: {
         ...commonEnv,
         RAG_QUEUE_URL: ragQueue.queueUrl,
+        SES_FROM_EMAIL: 'weareigrus@gmail.com',
+        SLACK_INVITE_LINK: 'https://join.slack.com/t/igrus/shared_invite/xxx', // 실제 링크로 변경 필요
       },
       architecture: lambda.Architecture.ARM_64,
     });
@@ -87,7 +96,8 @@ export class BotStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(60),
       environment: {
         ...commonEnv,
-        BEDROCK_KNOWLEDGE_BASE_ID: cdk.Fn.importValue('BaepdoongiKnowledgeBaseId'),
+        // Knowledge Base는 AWS Console에서 수동 생성 후 ID 업데이트 필요
+        BEDROCK_KNOWLEDGE_BASE_ID: 'PLACEHOLDER_UPDATE_AFTER_KB_CREATION',
       },
       architecture: lambda.Architecture.ARM_64,
     });
@@ -119,6 +129,21 @@ export class BotStack extends cdk.Stack {
     table.grantReadWriteData(this.ragLambda);
     table.grantReadWriteData(this.nameCheckerLambda);
 
+    // GSI 쿼리 권한 (Table.fromTableName은 GSI 권한을 자동 부여하지 않음)
+    const gsiPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'dynamodb:Query',
+        'dynamodb:Scan',
+      ],
+      resources: [
+        `${table.tableArn}/index/*`,
+      ],
+    });
+    this.botLambda.addToRolePolicy(gsiPolicy);
+    this.ragLambda.addToRolePolicy(gsiPolicy);
+    this.nameCheckerLambda.addToRolePolicy(gsiPolicy);
+
     slackSecret.grantRead(this.botLambda);
     slackSecret.grantRead(this.ragLambda);
     slackSecret.grantRead(this.nameCheckerLambda);
@@ -140,37 +165,92 @@ export class BotStack extends cdk.Stack {
     });
     this.ragLambda.addToRolePolicy(bedrockPolicy);
 
-    // API Gateway
-    const api = new apigateway.RestApi(this, 'BotApi', {
+    // SES 권한 (초대 이메일 발송)
+    const sesPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'ses:SendEmail',
+        'ses:SendRawEmail',
+      ],
+      resources: ['*'],
+    });
+    this.botLambda.addToRolePolicy(sesPolicy);
+
+    // CORS 허용 도메인
+    const corsAllowOrigins = dashboardDomain
+      ? [dashboardDomain, 'http://localhost:3001']
+      : ['*'];
+
+    // API Gateway with CORS
+    this.api = new apigateway.RestApi(this, 'BotApi', {
       restApiName: 'baepdoongi-api',
-      description: 'Slack Bot API Gateway',
+      description: 'Slack Bot + Dashboard API Gateway',
       deployOptions: {
         stageName: 'prod',
         throttlingRateLimit: 100,
         throttlingBurstLimit: 200,
       },
+      defaultCorsPreflightOptions: {
+        allowOrigins: corsAllowOrigins,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+        allowCredentials: true,
+      },
     });
 
-    // /slack/events 엔드포인트
-    const slackEvents = api.root.addResource('slack').addResource('events');
-    slackEvents.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(this.botLambda, {
-        timeout: cdk.Duration.seconds(29),
-      })
-    );
+    // Lambda 통합 (공통)
+    const lambdaIntegration = new apigateway.LambdaIntegration(this.botLambda, {
+      timeout: cdk.Duration.seconds(29),
+    });
 
+    // ============================================
+    // Slack 엔드포인트 (고정)
+    // ============================================
+    const slack = this.api.root.addResource('slack');
+    const slackEvents = slack.addResource('events');
+    slackEvents.addMethod('POST', lambdaIntegration);
+
+    // ============================================
+    // API 프록시 (모든 /api/* 요청을 Lambda로 전달)
+    // 개별 라우트 대신 프록시를 사용하여 Lambda 권한 정책 크기 제한 회피
+    // ============================================
+    const apiResource = this.api.root.addResource('api');
+    const apiProxy = apiResource.addResource('{proxy+}');
+    apiProxy.addMethod('ANY', lambdaIntegration);
+    // /api 루트 경로도 처리
+    apiResource.addMethod('ANY', lambdaIntegration);
+
+    // ============================================
     // 출력
+    // ============================================
     new cdk.CfnOutput(this, 'ApiEndpoint', {
-      value: api.url,
+      value: this.api.url,
       description: 'API Gateway 엔드포인트',
       exportName: 'BaepdoongiApiEndpoint',
     });
 
     new cdk.CfnOutput(this, 'SlackEventsUrl', {
-      value: `${api.url}slack/events`,
+      value: `${this.api.url}slack/events`,
       description: 'Slack Event Subscriptions URL',
       exportName: 'BaepdoongiSlackEventsUrl',
+    });
+
+    new cdk.CfnOutput(this, 'DashboardApiUrl', {
+      value: `${this.api.url}api`,
+      description: 'Dashboard API URL (NEXT_PUBLIC_API_URL)',
+      exportName: 'BaepdoongiDashboardApiUrl',
+    });
+
+    new cdk.CfnOutput(this, 'SubmissionWebhookUrl', {
+      value: `${this.api.url}api/webhooks/submissions`,
+      description: 'Google Form 웹훅 URL',
+      exportName: 'BaepdoongiSubmissionWebhookUrl',
+    });
+
+    new cdk.CfnOutput(this, 'PaymentWebhookUrl', {
+      value: `${this.api.url}api/webhooks/payments`,
+      description: 'Tasker 입금 알림 웹훅 URL',
+      exportName: 'BaepdoongiPaymentWebhookUrl',
     });
   }
 }
