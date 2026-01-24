@@ -21,6 +21,7 @@ const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || '/api';
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    credentials: 'include', // 쿠키 전송
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -87,6 +88,16 @@ export async function fetchSuggestions(): Promise<Suggestion[]> {
   return fetchAPI<Suggestion[]>('/suggestions');
 }
 
+export async function updateSuggestionStatus(
+  suggestionId: string,
+  status: Suggestion['status']
+): Promise<{ success: boolean }> {
+  return fetchAPI<{ success: boolean }>(`/suggestions/${suggestionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
 // Logs
 export async function fetchLogs(options?: { limit?: number; type?: string }): Promise<{
   logs: ActivityLog[];
@@ -105,97 +116,22 @@ export async function fetchLogs(options?: { limit?: number; type?: string }): Pr
 
 // Payments - Submissions
 export async function fetchSubmissions(): Promise<Submission[]> {
-  // TODO: 실제 API 연결
-  return [
-    {
-      submissionId: 'sub_001',
-      name: '서동윤',
-      studentId: '12231234',
-      email: 'seo@example.com',
-      department: '컴퓨터공학과',
-      status: 'pending',
-      submittedAt: '2024-01-23T10:00:00Z',
-      createdAt: '2024-01-23T10:00:00Z',
-    },
-    {
-      submissionId: 'sub_002',
-      name: '김철수',
-      studentId: '12221111',
-      email: 'kim@example.com',
-      department: '전자공학과',
-      status: 'matched',
-      submittedAt: '2024-01-22T14:00:00Z',
-      matchedDepositId: 'dep_001',
-      matchedAt: '2024-01-22T15:30:00Z',
-      createdAt: '2024-01-22T14:00:00Z',
-    },
-  ];
+  return fetchAPI<Submission[]>('/payments/submissions');
 }
 
 // Payments - Deposits
 export async function fetchDeposits(): Promise<Deposit[]> {
-  // TODO: 실제 API 연결
-  return [
-    {
-      depositId: 'dep_001',
-      depositorName: '김철수',
-      amount: 30000,
-      timestamp: '2024-01-22T15:30:00Z',
-      status: 'matched',
-      rawNotification: '김철수님이 30,000원을 입금했습니다',
-      matchedSubmissionId: 'sub_002',
-      matchedAt: '2024-01-22T15:30:00Z',
-      createdAt: '2024-01-22T15:30:00Z',
-    },
-    {
-      depositId: 'dep_002',
-      depositorName: '박영희23',
-      amount: 30000,
-      timestamp: '2024-01-23T11:00:00Z',
-      status: 'pending',
-      rawNotification: '박영희23님이 30,000원을 입금했습니다',
-      createdAt: '2024-01-23T11:00:00Z',
-    },
-  ];
+  return fetchAPI<Deposit[]>('/payments/deposits');
 }
 
 // Payments - Matches
 export async function fetchMatches(): Promise<Match[]> {
-  // TODO: 실제 API 연결
-  return [
-    {
-      matchId: 'match_001',
-      submissionId: 'sub_002',
-      depositId: 'dep_001',
-      resultType: 'auto',
-      confidence: 95,
-      reason: '이름 일치 + 시간 차이 1.5시간',
-      timeDifferenceMinutes: 90,
-      createdAt: '2024-01-22T15:30:00Z',
-    },
-  ];
+  return fetchAPI<Match[]>('/payments/matches');
 }
 
 // Payment Stats
 export async function fetchPaymentStats(): Promise<PaymentStats> {
-  // TODO: 실제 API 연결
-  return {
-    totalSubmissions: 45,
-    submissionsByStatus: {
-      pending: 12,
-      matched: 28,
-      invited: 3,
-      joined: 2,
-    },
-    totalDeposits: 35,
-    depositsByStatus: {
-      pending: 5,
-      matched: 28,
-      expired: 2,
-    },
-    autoMatchRate: 78,
-    totalAmount: 1050000,
-  };
+  return fetchAPI<PaymentStats>('/payments/stats');
 }
 
 // Manual Match

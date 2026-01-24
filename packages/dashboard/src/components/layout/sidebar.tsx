@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import {
   LayoutDashboard,
@@ -13,8 +13,10 @@ import {
   CreditCard,
   Dog,
   ChevronDown,
+  LogOut,
   type LucideIcon,
 } from 'lucide-react';
+import { logout } from '@/lib/auth';
 
 interface NavigationChild {
   name: string;
@@ -47,6 +49,8 @@ const navigation: NavigationItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
     // Auto-expand menu if current path is in its children
     const expanded: string[] = [];
@@ -62,6 +66,16 @@ export function Sidebar() {
     setExpandedMenus((prev) =>
       prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
     );
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      router.push('/login');
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -157,9 +171,18 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-700 text-sm text-slate-400">
-        <p>IGRUS Slack Bot</p>
-        <p>v2.0.0</p>
+      <div className="p-4 border-t border-slate-700">
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors disabled:opacity-50"
+        >
+          <LogOut className="w-5 h-5" />
+          <span>{isLoggingOut ? '로그아웃 중...' : '로그아웃'}</span>
+        </button>
+        <div className="mt-3 px-4 text-xs text-slate-500">
+          <p>IGRUS Slack Bot v2.0.0</p>
+        </div>
       </div>
     </aside>
   );

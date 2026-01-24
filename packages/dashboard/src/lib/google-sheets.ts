@@ -93,7 +93,7 @@ export function validateSubmissionInput(
     errors.push('학번은 8자리 숫자여야 합니다');
   }
 
-  if (!validateEmail(input.email)) {
+  if (input.email && !validateEmail(input.email)) {
     errors.push('올바른 이메일 형식이 아닙니다');
   }
 
