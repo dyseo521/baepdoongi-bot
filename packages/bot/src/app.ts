@@ -1,18 +1,23 @@
 /**
  * Slack Bolt 앱 설정 및 Lambda 핸들러
  *
- * AWS Lambda에서 AwsLambdaReceiver를 사용하여 Slack 이벤트를 처리합니다.
- * 모든 이벤트, 커맨드, 액션 핸들러는 별도 모듈에서 등록됩니다.
+ * AWS Lambda에서 다음 요청을 처리합니다:
+ * - /slack/events: Slack 이벤트 (Bolt 사용)
+ * - /api/*: Dashboard API (REST API)
+ * - /api/webhooks/*: 외부 웹훅 (Google Form, Tasker)
  */
 
 import pkg from '@slack/bolt';
 import type { App as AppType, LogLevel as LogLevelType } from '@slack/bolt';
 const { App, AwsLambdaReceiver, LogLevel } = pkg;
 import type { AwsCallback, AwsEvent } from '@slack/bolt/dist/receivers/AwsLambdaReceiver.js';
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { getSecrets } from './services/secrets.service.js';
 import { registerEventHandlers } from './handlers/events/index.js';
 import { registerCommandHandlers } from './handlers/commands/index.js';
 import { registerActionHandlers } from './handlers/actions/index.js';
+import { handleApiRequest } from './handlers/api/index.js';
+import { handleWebhookRequest } from './handlers/webhooks/index.js';
 
 // 환경 변수 검증
 const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
@@ -64,14 +69,45 @@ async function initializeApp(): Promise<AppType> {
 }
 
 /**
+ * 요청 경로를 기반으로 적절한 핸들러로 라우팅합니다.
+ */
+function getRequestPath(event: AwsEvent | APIGatewayProxyEvent): string {
+  // API Gateway 이벤트에서 경로 추출
+  if ('path' in event && typeof event.path === 'string') {
+    return event.path;
+  }
+  // Slack Bolt 이벤트 형식
+  if ('requestContext' in event && event.requestContext) {
+    const requestContext = event.requestContext as { path?: string; resourcePath?: string };
+    return requestContext.path || requestContext.resourcePath || '/slack/events';
+  }
+  return '/slack/events';
+}
+
+/**
  * AWS Lambda 핸들러
- * API Gateway로부터 이벤트를 받아 Slack 요청을 처리합니다.
+ * API Gateway로부터 이벤트를 받아 경로에 따라 적절한 핸들러로 라우팅합니다.
  */
 export async function handler(
-  event: AwsEvent,
+  event: AwsEvent | APIGatewayProxyEvent,
   context: unknown,
   callback: AwsCallback
 ): Promise<unknown> {
+  const path = getRequestPath(event);
+
+  console.log(`[Lambda] Request path: ${path}`);
+
+  // /api/webhooks/* - 외부 웹훅 (인증 불필요, Bolt 우회)
+  if (path.startsWith('/api/webhooks')) {
+    return handleWebhookRequest(event as APIGatewayProxyEvent);
+  }
+
+  // /api/* - Dashboard API (인증 필요, Bolt 우회)
+  if (path.startsWith('/api/')) {
+    return handleApiRequest(event as APIGatewayProxyEvent);
+  }
+
+  // /slack/events - Slack 이벤트 (Bolt 사용)
   await initializeApp();
 
   if (!awsLambdaReceiver) {
@@ -79,7 +115,7 @@ export async function handler(
   }
 
   const lambdaHandler = await awsLambdaReceiver.start();
-  return lambdaHandler(event, context, callback);
+  return lambdaHandler(event as AwsEvent, context, callback);
 }
 
 // 로컬 개발용 내보내기
