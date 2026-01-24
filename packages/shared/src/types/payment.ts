@@ -23,13 +23,25 @@ export interface Submission {
   studentId: string;
 
   /** 이메일 */
-  email: string;
+  email?: string;
 
   /** 학과 */
   department?: string;
 
   /** 전화번호 */
   phone?: string;
+
+  /** 성별 (남/여) */
+  gender?: string;
+
+  /** 학년 (1학년~5학년 이상) */
+  grade?: string;
+
+  /** 재학/휴학 여부 */
+  enrollmentStatus?: string;
+
+  /** 회비 납부 완료 여부 (폼에서 자가 체크) */
+  hasPaid?: string;
 
   /** 현재 상태 */
   status: SubmissionStatus;
@@ -45,6 +57,12 @@ export interface Submission {
 
   /** 초대 이메일 발송 시각 (ISO 8601) */
   invitedAt?: string;
+
+  /** 이메일 발송 여부 */
+  emailSent?: boolean;
+
+  /** 이메일 발송 시각 (ISO 8601) */
+  emailSentAt?: string;
 
   /** Slack 가입 완료 시각 (ISO 8601) */
   joinedAt?: string;
