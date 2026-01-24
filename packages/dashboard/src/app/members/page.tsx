@@ -2,12 +2,20 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, AlertTriangle, CheckCircle, RefreshCw, MessageSquare } from 'lucide-react';
-import { PageHeader } from '@/components/layout';
+import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button } from '@/components/ui';
 import { fetchMembers, syncMembers, warnMember } from '@/lib/api';
 import type { Member } from '@baepdoongi/shared';
 
 export default function MembersPage() {
+  return (
+    <AuthLayout>
+      <MembersContent />
+    </AuthLayout>
+  );
+}
+
+function MembersContent() {
   const queryClient = useQueryClient();
 
   const { data: members = [], isLoading, refetch } = useQuery<Member[]>({

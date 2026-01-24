@@ -9,12 +9,20 @@ import {
   MessageSquare,
   Bot,
 } from 'lucide-react';
-import { PageHeader } from '@/components/layout';
+import { AuthLayout, PageHeader } from '@/components/layout';
 import { StatCard } from '@/components/ui';
 import { fetchDashboardStats, fetchEvents, fetchMembers } from '@/lib/api';
 import type { DashboardStats, Event, Member } from '@baepdoongi/shared';
 
 export default function DashboardPage() {
+  return (
+    <AuthLayout>
+      <DashboardContent />
+    </AuthLayout>
+  );
+}
+
+function DashboardContent() {
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboardStats'],
     queryFn: fetchDashboardStats,

@@ -12,12 +12,20 @@ import {
   Mail,
   Users,
 } from 'lucide-react';
-import { PageHeader } from '@/components/layout';
+import { AuthLayout, PageHeader } from '@/components/layout';
 import { StatCard, Button } from '@/components/ui';
 import { fetchPaymentStats } from '@/lib/api';
 import type { PaymentStats } from '@baepdoongi/shared';
 
 export default function PaymentsPage() {
+  return (
+    <AuthLayout>
+      <PaymentsContent />
+    </AuthLayout>
+  );
+}
+
+function PaymentsContent() {
   const { data: stats, isLoading } = useQuery<PaymentStats>({
     queryKey: ['paymentStats'],
     queryFn: fetchPaymentStats,
