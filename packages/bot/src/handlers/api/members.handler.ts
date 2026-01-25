@@ -9,7 +9,7 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { WebClient } from '@slack/web-api';
 import { createResponse, createErrorResponse } from './index.js';
-import { listMembers, saveMember, saveLog } from '../../services/db.service.js';
+import { listMembers, saveMember, saveLog, getMember } from '../../services/db.service.js';
 import { sendDirectMessage } from '../../services/slack.service.js';
 import { getSecrets } from '../../services/secrets.service.js';
 import type { Member } from '@baepdoongi/shared';
@@ -64,7 +64,12 @@ async function handleGetMembers(
       const members = await fetchSlackMembers();
 
       if (sync) {
+        // 기존 회원의 joinedAt 보존
         for (const member of members) {
+          const existingMember = await getMember(member.slackId);
+          if (existingMember?.joinedAt) {
+            member.joinedAt = existingMember.joinedAt;
+          }
           await saveMember(member);
         }
       }
@@ -131,7 +136,12 @@ async function handleSyncMembers(): Promise<APIGatewayProxyResult> {
   try {
     const members = await fetchSlackMembers();
 
+    // 기존 회원의 joinedAt 보존
     for (const member of members) {
+      const existingMember = await getMember(member.slackId);
+      if (existingMember?.joinedAt) {
+        member.joinedAt = existingMember.joinedAt;
+      }
       await saveMember(member);
     }
 
