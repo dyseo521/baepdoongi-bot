@@ -20,6 +20,8 @@ export interface SlackSecrets {
   FORM_WEBHOOK_SECRET?: string;
   // 대시보드 관리자 비밀번호
   ADMIN_PASSWORD?: string;
+  // Bedrock Knowledge Base ID
+  BEDROCK_KNOWLEDGE_BASE_ID?: string;
 }
 
 // AWS 클라이언트 (싱글톤)
