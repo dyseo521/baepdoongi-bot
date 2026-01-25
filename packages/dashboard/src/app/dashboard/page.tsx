@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Users,
@@ -39,20 +40,25 @@ function DashboardContent() {
   });
 
   // 7일 이내 이벤트 필터링
-  const now = new Date();
-  const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const upcomingEvents = events
-    .filter((e) => {
-      const eventDate = new Date(e.datetime);
-      return eventDate >= now && eventDate <= sevenDaysLater && e.status !== 'cancelled';
-    })
-    .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+  const upcomingEvents = useMemo(() => {
+    const now = new Date();
+    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return events
+      .filter((e) => {
+        const eventDate = new Date(e.datetime);
+        return eventDate >= now && eventDate <= sevenDaysLater && e.status !== 'cancelled';
+      })
+      .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+  }, [events]);
 
   // 7일 이내 가입 회원 필터링
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const recentMembers = members
-    .filter((m) => new Date(m.joinedAt) >= sevenDaysAgo)
-    .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
+  const recentMembers = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return members
+      .filter((m) => new Date(m.joinedAt) >= sevenDaysAgo)
+      .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
+  }, [members]);
 
   return (
     <div>
@@ -125,6 +131,8 @@ function DashboardContent() {
                       <img
                         src={member.imageUrl}
                         alt={member.displayName}
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-full"
                       />
                     ) : (
@@ -166,7 +174,7 @@ function DashboardContent() {
               <ul className="space-y-3">
                 {upcomingEvents.map((event) => {
                   const eventDate = new Date(event.datetime);
-                  const diffMs = eventDate.getTime() - now.getTime();
+                  const diffMs = eventDate.getTime() - Date.now();
                   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                   const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
