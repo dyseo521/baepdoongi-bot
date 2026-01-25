@@ -3,6 +3,7 @@
  *
  * S3 + CloudFront로 정적 SPA 대시보드를 배포합니다.
  * HTTPS 지원 및 글로벌 캐싱을 제공합니다.
+ * API Gateway를 /api/* 경로로 프록시하여 same-origin으로 만듭니다.
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -10,6 +11,11 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import type { Construct } from 'constructs';
+
+interface DashboardStackProps extends cdk.StackProps {
+  /** API Gateway URL (optional, for /api/* proxy) */
+  apiUrl?: string;
+}
 
 export class DashboardStack extends cdk.Stack {
   /** 대시보드 호스팅 S3 버킷 */
@@ -19,8 +25,10 @@ export class DashboardStack extends cdk.Stack {
   /** CloudFront 도메인 (HTTPS) */
   public readonly dashboardDomain: string;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: DashboardStackProps) {
     super(scope, id, props);
+
+    const { apiUrl } = props || {};
 
     // 대시보드 정적 파일 호스팅 버킷 (OAC 사용으로 퍼블릭 액세스 차단)
     this.dashboardBucket = new s3.Bucket(this, 'DashboardBucket', {
@@ -71,6 +79,29 @@ function handler(event) {
       `.trim()),
     });
 
+    // API Gateway Origin (optional)
+    // apiUrl format: https://xxx.execute-api.ap-northeast-2.amazonaws.com/prod/
+    let additionalBehaviors: Record<string, cloudfront.BehaviorOptions> | undefined;
+
+    if (apiUrl) {
+      // Parse API Gateway URL to get domain and path
+      const apiUrlObj = new URL(apiUrl);
+      const apiOrigin = new origins.HttpOrigin(apiUrlObj.hostname, {
+        originPath: apiUrlObj.pathname.replace(/\/$/, ''), // Remove trailing slash (e.g., /prod)
+        protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+      });
+
+      additionalBehaviors = {
+        '/api/*': {
+          origin: apiOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // API는 캐싱하지 않음
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+        },
+      };
+    }
+
     // CloudFront 배포
     this.distribution = new cloudfront.Distribution(this, 'DashboardDistribution', {
       comment: 'IGRUS Dashboard',
@@ -90,6 +121,8 @@ function handler(event) {
           },
         ],
       },
+      // API Gateway proxy (same-origin으로 쿠키 문제 해결)
+      additionalBehaviors,
       // 404 에러 처리 (실제로 없는 파일 요청 시)
       errorResponses: [
         {
@@ -135,7 +168,7 @@ function handler(event) {
       value: `
 대시보드 배포 방법:
 1. cd packages/dashboard
-2. NEXT_PUBLIC_API_URL=<API_GATEWAY_URL>/api pnpm build
+2. NEXT_PUBLIC_API_URL=/api pnpm build  # CloudFront 프록시 사용 (same-origin)
 3. aws s3 sync out/ s3://${this.dashboardBucket.bucketName} --delete
 4. aws cloudfront create-invalidation --distribution-id ${this.distribution.distributionId} --paths "/*"
       `.trim(),

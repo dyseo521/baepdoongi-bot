@@ -35,7 +35,8 @@ function LoginForm() {
       const result = await login(password);
 
       if (result.success) {
-        router.push(redirectTo);
+        // 전체 페이지 새로고침으로 이동 (쿠키가 확실히 적용된 후 로드)
+        window.location.href = redirectTo;
       } else {
         setError(result.error || '로그인에 실패했습니다.');
       }
