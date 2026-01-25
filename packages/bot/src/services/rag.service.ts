@@ -12,18 +12,26 @@ import {
   RetrieveAndGenerateSessionConfiguration,
 } from '@aws-sdk/client-bedrock-agent-runtime';
 import { saveRagSession, getRagSession } from './db.service.js';
+import { getSecrets } from './secrets.service.js';
 import { generateId } from '../utils/id.js';
 
 // Bedrock 클라이언트 설정
 const client = new BedrockAgentRuntimeClient({
-  region: process.env.AWS_REGION || 'ap-northeast-2',
+  region: process.env['AWS_REGION'] || 'ap-northeast-2',
 });
 
-// 환경 변수에서 Knowledge Base ID 가져오기
-const KNOWLEDGE_BASE_ID = process.env.BEDROCK_KNOWLEDGE_BASE_ID || '';
+// Knowledge Base ID (지연 로드)
+let knowledgeBaseId: string | undefined;
 
-// 사용할 Claude 모델 ARN (서울 리전)
-const MODEL_ARN = `arn:aws:bedrock:${process.env.AWS_REGION || 'ap-northeast-2'}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0`;
+// Claude 모델 - Global Cross-Region Inference Profile (서울 지원)
+// https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html
+// System-defined inference profile은 ID만으로 사용 가능
+const CLAUDE_HAIKU_4_5_GLOBAL = 'global.anthropic.claude-haiku-4-5-20251001-v1:0';
+
+// 기본 모델: Claude Haiku 4.5 (Global CRIS, 빠르고 저렴)
+const REGION = process.env['AWS_REGION'] || 'ap-northeast-2';
+// RetrieveAndGenerate에서는 inference profile ID를 modelArn에 직접 전달 가능
+const MODEL_ARN = CLAUDE_HAIKU_4_5_GLOBAL;
 
 /** RAG 응답 타입 */
 export interface RagResponse {
@@ -47,7 +55,13 @@ export async function askKnowledgeBase(
   userId: string,
   existingSessionId?: string
 ): Promise<RagResponse> {
-  if (!KNOWLEDGE_BASE_ID) {
+  // Secrets Manager에서 KB ID 로드 (캐싱됨)
+  if (!knowledgeBaseId) {
+    const secrets = await getSecrets();
+    knowledgeBaseId = secrets.BEDROCK_KNOWLEDGE_BASE_ID;
+  }
+
+  if (!knowledgeBaseId) {
     throw new Error('BEDROCK_KNOWLEDGE_BASE_ID가 설정되지 않았습니다.');
   }
 
@@ -69,7 +83,7 @@ export async function askKnowledgeBase(
     retrieveAndGenerateConfiguration: {
       type: 'KNOWLEDGE_BASE',
       knowledgeBaseConfiguration: {
-        knowledgeBaseId: KNOWLEDGE_BASE_ID,
+        knowledgeBaseId: knowledgeBaseId,
         modelArn: MODEL_ARN,
         generationConfiguration: {
           promptTemplate: {
@@ -133,11 +147,17 @@ $search_results$
  * Knowledge Base 연결 상태를 확인합니다.
  */
 export async function checkKnowledgeBaseConnection(): Promise<boolean> {
-  if (!KNOWLEDGE_BASE_ID) {
-    return false;
-  }
-
   try {
+    // KB ID 로드 시도
+    if (!knowledgeBaseId) {
+      const secrets = await getSecrets();
+      knowledgeBaseId = secrets.BEDROCK_KNOWLEDGE_BASE_ID;
+    }
+
+    if (!knowledgeBaseId) {
+      return false;
+    }
+
     // 간단한 테스트 쿼리 실행
     await askKnowledgeBase('테스트', 'system', undefined);
     return true;
