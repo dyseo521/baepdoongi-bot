@@ -73,11 +73,26 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
       // RAG 질의 실행
       const response = await askKnowledgeBase(query, userId, sessionId);
 
+      // Slack 마크다운 변환
+      const slackText = response.answer
+        .replace(/\*\*([^*]+)\*\*/g, '*$1*')           // **bold** → *bold*
+        .replace(/^###\s+(.+)$/gm, '*$1*')             // ### heading → *heading*
+        .replace(/^##\s+(.+)$/gm, '*$1*')              // ## heading → *heading*
+        .replace(/^#\s+(.+)$/gm, '*$1*')               // # heading → *heading*
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<$2|$1>') // [text](url) → <url|text>
+        .replace(/<@([^>]+)>/g, (match, name) => {
+          // 유효한 Slack 사용자 ID (U 또는 W로 시작)만 유지
+          return /^[UW][A-Z0-9]+$/.test(name) ? match : `@${name}`;
+        });
+
+      // AI 면책 문구 추가
+      const finalText = `${slackText}\n\n_이 응답은 AI가 생성했으며, 부정확할 수 있습니다._`;
+
       // Slack 메시지 업데이트
       await client.chat.update({
         channel,
         ts,
-        text: response.answer,
+        text: finalText,
       });
 
       // 성공 로그 기록

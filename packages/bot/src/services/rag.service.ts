@@ -92,6 +92,10 @@ export async function askKnowledgeBase(
 답변은 한국어로 작성하고, 가능하면 이모지를 적절히 사용해주세요.
 확실하지 않은 정보는 "확실하지 않지만" 등의 표현을 사용하세요.
 
+Slack 형식으로 응답하세요:
+- 마크다운 헤더(#, ##, ###)를 사용하지 마세요
+- 사용자 멘션(<@USER_ID>)과 채널 멘션(<#CHANNEL_ID>)은 그대로 유지하세요
+
 검색된 정보:
 $search_results$
 
