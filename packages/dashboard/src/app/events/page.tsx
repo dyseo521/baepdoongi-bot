@@ -60,12 +60,20 @@ function EventsContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
     },
+    onError: (error) => {
+      console.error('공지 전송 실패:', error);
+      alert('공지 전송에 실패했습니다.');
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteEvent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
+    },
+    onError: (error) => {
+      console.error('이벤트 삭제 실패:', error);
+      alert('이벤트 삭제에 실패했습니다.');
     },
   });
 
@@ -74,6 +82,10 @@ function EventsContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
     },
+    onError: (error) => {
+      console.error('이벤트 생성 실패:', error);
+      alert('이벤트 생성에 실패했습니다.');
+    },
   });
 
   const updateMutation = useMutation({
@@ -81,6 +93,10 @@ function EventsContent() {
       updateEvent(eventId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
+    },
+    onError: (error) => {
+      console.error('이벤트 수정 실패:', error);
+      alert('이벤트 수정에 실패했습니다.');
     },
   });
 
