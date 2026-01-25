@@ -258,6 +258,31 @@ export async function saveLog(
 }
 
 /**
+ * 오늘의 RAG 쿼리 수를 반환합니다.
+ */
+export async function countTodayRagQueries(): Promise<number> {
+  const today = new Date().toISOString().split('T')[0];
+  const startOfDay = `${today}T00:00:00.000Z`;
+  const endOfDay = `${today}T23:59:59.999Z`;
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: GSI2_NAME,
+      KeyConditionExpression: 'GSI2PK = :pk AND GSI2SK BETWEEN :start AND :end',
+      ExpressionAttributeValues: {
+        ':pk': 'LOG#RAG_QUERY',
+        ':start': startOfDay,
+        ':end': endOfDay,
+      },
+      Select: 'COUNT',
+    })
+  );
+
+  return result.Count || 0;
+}
+
+/**
  * 특정 날짜의 로그를 조회합니다.
  */
 export async function getLogsByDate(date: string): Promise<ActivityLog[]> {

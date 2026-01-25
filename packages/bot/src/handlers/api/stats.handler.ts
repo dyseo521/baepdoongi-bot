@@ -10,7 +10,8 @@ import { createResponse, createErrorResponse } from './index.js';
 import { getSecrets } from '../../services/secrets.service.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import type { DashboardStats, Event, Suggestion } from '@baepdoongi/shared';
+import type { DashboardStats, Event, Suggestion, Member } from '@baepdoongi/shared';
+import { countTodayRagQueries } from '../../services/db.service.js';
 
 const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(ddbClient);
@@ -43,20 +44,39 @@ export async function handleStats(
   }
 
   try {
-    // Slack에서 회원 목록 가져오기
+    // Slack에서 회원 목록 가져오기 (총 인원, 이름 형식 준수 계산용)
     const slackMembers = await fetchSlackMembers();
     const totalMembers = slackMembers.length;
     const validNameMembers = slackMembers.filter((m) =>
       NAME_PATTERN.test(m.displayName)
     ).length;
 
-    // 이번 달 신규 가입자
+    // 이번 달 신규 가입자 (DB의 joinedAt 기준으로 정확한 계산)
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const newMembersThisMonth = slackMembers.filter((m) => {
-      const joinedAt = new Date(m.joinedAt);
-      return joinedAt >= startOfMonth;
-    }).length;
+    let newMembersThisMonth = 0;
+
+    try {
+      const dbMembersResult = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          IndexName: 'GSI1',
+          KeyConditionExpression: 'GSI1PK = :pk',
+          ExpressionAttributeValues: {
+            ':pk': 'MEMBER',
+          },
+        })
+      );
+      const dbMembers = (dbMembersResult.Items as Member[]) || [];
+      newMembersThisMonth = dbMembers.filter((m) => {
+        if (!m.joinedAt) return false;
+        const joinedAt = new Date(m.joinedAt);
+        return joinedAt >= startOfMonth;
+      }).length;
+    } catch (memberDbError) {
+      console.error('[Stats API] Member DB Error:', memberDbError);
+      // DB 조회 실패 시 0으로 설정
+    }
 
     // DynamoDB에서 이벤트 조회
     let activeEvents = 0;
@@ -100,13 +120,21 @@ export async function handleStats(
       // DB 연결 실패 시 0으로 설정
     }
 
+    // RAG 쿼리 수 조회
+    let ragQueriesToday = 0;
+    try {
+      ragQueriesToday = await countTodayRagQueries();
+    } catch (ragError) {
+      console.error('[Stats API] RAG count error:', ragError);
+    }
+
     const stats: DashboardStats = {
       totalMembers,
       validNameMembers,
       newMembersThisMonth,
       activeEvents,
       pendingSuggestions,
-      ragQueriesToday: 0, // TODO: RAG 쿼리 수 추가
+      ragQueriesToday,
     };
 
     return createResponse(200, stats);
