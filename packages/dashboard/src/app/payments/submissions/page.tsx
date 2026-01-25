@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX } from 'lucide-react';
 import Link from 'next/link';
 import { AuthLayout, PageHeader } from '@/components/layout';
-import { DataTable, Badge, Button, SubmissionsPageSkeleton } from '@/components/ui';
+import { DataTable, Badge, Button, Modal, SubmissionsPageSkeleton } from '@/components/ui';
 import { fetchSubmissions, fetchDeposits, sendInviteEmail } from '@/lib/api';
 import type { Submission, Deposit, SubmissionStatus } from '@baepdoongi/shared';
 
@@ -42,7 +42,19 @@ function SubmissionsContent() {
   });
 
   // depositId -> Deposit 맵핑 (입금 금액 조회용)
-  const depositMap = new Map(deposits.map(d => [d.depositId, d]));
+  const depositMap = useMemo(
+    () => new Map(deposits.map(d => [d.depositId, d])),
+    [deposits]
+  );
+
+  // 상태별 개수 계산 (필터 버튼용)
+  const statusCounts = useMemo(() => ({
+    all: submissions.length,
+    pending: submissions.filter(s => s.status === 'pending').length,
+    matched: submissions.filter(s => s.status === 'matched').length,
+    invited: submissions.filter(s => s.status === 'invited').length,
+    joined: submissions.filter(s => s.status === 'joined').length,
+  }), [submissions]);
 
   const isLoading = isLoadingSubmissions || isLoadingDeposits;
 
@@ -53,7 +65,19 @@ function SubmissionsContent() {
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
       setSelectedSubmission(null);
     },
+    onError: (error) => {
+      console.error('초대 메일 발송 실패:', error);
+      alert('초대 메일 발송에 실패했습니다.');
+    },
   });
+
+  // 필터링된 지원서 목록 (훅은 조건부 반환 전에 선언)
+  const filteredSubmissions = useMemo(
+    () => filter === 'all'
+      ? submissions
+      : submissions.filter(s => s.status === filter),
+    [submissions, filter]
+  );
 
   // 스켈레톤 로딩 표시
   if (isLoading) {
@@ -71,10 +95,6 @@ function SubmissionsContent() {
       </div>
     );
   }
-
-  const filteredSubmissions = filter === 'all'
-    ? submissions
-    : submissions.filter(s => s.status === filter);
 
   const columns = [
     {
@@ -204,23 +224,23 @@ function SubmissionsContent() {
         {/* 상태 필터 */}
         <div className="mb-6 flex gap-2 flex-wrap">
           <FilterButton active={filter === 'all'} onClick={() => setFilter('all')}>
-            전체 ({submissions.length})
+            전체 ({statusCounts.all})
           </FilterButton>
           <FilterButton active={filter === 'pending'} onClick={() => setFilter('pending')}>
             <Clock className="w-3 h-3" />
-            입금 대기 ({submissions.filter(s => s.status === 'pending').length})
+            입금 대기 ({statusCounts.pending})
           </FilterButton>
           <FilterButton active={filter === 'matched'} onClick={() => setFilter('matched')}>
             <CheckCircle className="w-3 h-3" />
-            입금 확인 ({submissions.filter(s => s.status === 'matched').length})
+            입금 확인 ({statusCounts.matched})
           </FilterButton>
           <FilterButton active={filter === 'invited'} onClick={() => setFilter('invited')}>
             <Mail className="w-3 h-3" />
-            초대 발송 ({submissions.filter(s => s.status === 'invited').length})
+            초대 발송 ({statusCounts.invited})
           </FilterButton>
           <FilterButton active={filter === 'joined'} onClick={() => setFilter('joined')}>
             <Users className="w-3 h-3" />
-            가입 완료 ({submissions.filter(s => s.status === 'joined').length})
+            가입 완료 ({statusCounts.joined})
           </FilterButton>
         </div>
 
@@ -234,81 +254,66 @@ function SubmissionsContent() {
       </div>
 
       {/* 상세 모달 */}
-      {selectedSubmission && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setSelectedSubmission(null)}
-          />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[80vh] overflow-auto">
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <h2 className="text-xl font-semibold">지원서 상세</h2>
-                <button
-                  onClick={() => setSelectedSubmission(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <InfoRow label="이름" value={selectedSubmission.name} />
-                <InfoRow label="학번" value={selectedSubmission.studentId} />
-                <InfoRow label="학과" value={selectedSubmission.department || '-'} />
-                <InfoRow label="학년" value={selectedSubmission.grade || '-'} />
-                <InfoRow label="성별" value={selectedSubmission.gender || '-'} />
-                <InfoRow label="재학 여부" value={selectedSubmission.enrollmentStatus || '-'} />
-                <InfoRow label="연락처" value={selectedSubmission.phone || '-'} />
-                <InfoRow label="이메일" value={selectedSubmission.email || '-'} />
-                <InfoRow
-                  label="자가 체크"
-                  value={selectedSubmission.hasPaid === '네' ? '✓ 입금함' : '미체크'}
-                  highlight={selectedSubmission.hasPaid === '네'}
-                />
-                <InfoRow
-                  label="입금액"
-                  value={(() => {
-                    if (!selectedSubmission.matchedDepositId) return '-';
-                    const deposit = depositMap.get(selectedSubmission.matchedDepositId);
-                    return deposit ? `${new Intl.NumberFormat('ko-KR').format(deposit.amount)}원` : '-';
-                  })()}
-                  highlight={!!selectedSubmission.matchedDepositId}
-                />
-                <InfoRow
-                  label="매칭 상태"
-                  value={statusConfig[selectedSubmission.status].label}
-                />
-                <InfoRow
-                  label="메일 발송"
-                  value={selectedSubmission.emailSent
-                    ? `발송 완료 (${selectedSubmission.emailSentAt ? new Date(selectedSubmission.emailSentAt).toLocaleString('ko-KR') : ''})`
-                    : '미발송'
-                  }
-                  highlight={selectedSubmission.emailSent === true}
-                />
-                <InfoRow
-                  label="제출일"
-                  value={new Date(selectedSubmission.submittedAt).toLocaleString('ko-KR')}
-                />
-              </div>
-
-              {selectedSubmission.status === 'matched' && !selectedSubmission.emailSent && (
-                <div className="mt-6 pt-4 border-t">
-                  <Button
-                    className="w-full"
-                    leftIcon={<Mail className="w-4 h-4" />}
-                    onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
-                    isLoading={sendEmailMutation.isPending}
-                  >
-                    초대 메일 발송
-                  </Button>
-                </div>
-              )}
-            </div>
+      <Modal
+        isOpen={!!selectedSubmission}
+        onClose={() => setSelectedSubmission(null)}
+        title="지원서 상세"
+        footer={
+          selectedSubmission?.status === 'matched' && !selectedSubmission?.emailSent ? (
+            <Button
+              className="w-full"
+              leftIcon={<Mail className="w-4 h-4" />}
+              onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
+              isLoading={sendEmailMutation.isPending}
+            >
+              초대 메일 발송
+            </Button>
+          ) : undefined
+        }
+      >
+        {selectedSubmission && (
+          <div className="p-6 space-y-4">
+            <InfoRow label="이름" value={selectedSubmission.name} />
+            <InfoRow label="학번" value={selectedSubmission.studentId} />
+            <InfoRow label="학과" value={selectedSubmission.department || '-'} />
+            <InfoRow label="학년" value={selectedSubmission.grade || '-'} />
+            <InfoRow label="성별" value={selectedSubmission.gender || '-'} />
+            <InfoRow label="재학 여부" value={selectedSubmission.enrollmentStatus || '-'} />
+            <InfoRow label="연락처" value={selectedSubmission.phone || '-'} />
+            <InfoRow label="이메일" value={selectedSubmission.email || '-'} />
+            <InfoRow
+              label="자가 체크"
+              value={selectedSubmission.hasPaid === '네' ? '✓ 입금함' : '미체크'}
+              highlight={selectedSubmission.hasPaid === '네'}
+            />
+            <InfoRow
+              label="입금액"
+              value={(() => {
+                if (!selectedSubmission.matchedDepositId) return '-';
+                const deposit = depositMap.get(selectedSubmission.matchedDepositId);
+                return deposit ? `${new Intl.NumberFormat('ko-KR').format(deposit.amount)}원` : '-';
+              })()}
+              highlight={!!selectedSubmission.matchedDepositId}
+            />
+            <InfoRow
+              label="매칭 상태"
+              value={statusConfig[selectedSubmission.status].label}
+            />
+            <InfoRow
+              label="메일 발송"
+              value={selectedSubmission.emailSent
+                ? `발송 완료 (${selectedSubmission.emailSentAt ? new Date(selectedSubmission.emailSentAt).toLocaleString('ko-KR') : ''})`
+                : '미발송'
+              }
+              highlight={selectedSubmission.emailSent === true}
+            />
+            <InfoRow
+              label="제출일"
+              value={new Date(selectedSubmission.submittedAt).toLocaleString('ko-KR')}
+            />
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

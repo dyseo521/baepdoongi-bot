@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
-import { DataTable, Badge, Button, SuggestionsPageSkeleton } from '@/components/ui';
+import { DataTable, Badge, Button, Modal, SuggestionsPageSkeleton } from '@/components/ui';
 import { fetchSuggestions, updateSuggestionStatus } from '@/lib/api';
 import type { Suggestion, SuggestionStatus } from '@baepdoongi/shared';
 
@@ -52,6 +52,10 @@ function SuggestionsContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suggestions'] });
       setSelectedSuggestion(null);
+    },
+    onError: (error) => {
+      console.error('상태 변경 실패:', error);
+      alert('상태 변경에 실패했습니다.');
     },
   });
 
@@ -198,77 +202,65 @@ function SuggestionsContent() {
       </div>
 
       {/* 상세 모달 */}
-      {selectedSuggestion && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setSelectedSuggestion(null)}
-          />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[80vh] overflow-auto">
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <span className="text-sm text-gray-500">
-                    {categoryLabels[selectedSuggestion.category]}
-                  </span>
-                  <h2 className="text-xl font-semibold mt-1">
-                    {selectedSuggestion.title}
-                  </h2>
-                </div>
-                <button
-                  onClick={() => setSelectedSuggestion(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
+      <Modal
+        isOpen={!!selectedSuggestion}
+        onClose={() => setSelectedSuggestion(null)}
+        title={selectedSuggestion?.title || '건의사항'}
+      >
+        {selectedSuggestion && (
+          <div className="p-6">
+            <div className="mb-4">
+              <span className="text-sm text-gray-500">
+                {categoryLabels[selectedSuggestion.category]}
+              </span>
+            </div>
 
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {selectedSuggestion.content}
-                </p>
-              </div>
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <p className="text-gray-700 whitespace-pre-wrap">
+                {selectedSuggestion.content}
+              </p>
+            </div>
 
-              <div className="text-sm text-gray-500 mb-4">
-                등록일: {new Date(selectedSuggestion.createdAt).toLocaleString('ko-KR')}
-              </div>
+            <div className="text-sm text-gray-500 mb-4">
+              등록일: {new Date(selectedSuggestion.createdAt).toLocaleString('ko-KR')}
+            </div>
 
-              <div className="border-t pt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  상태 변경
-                </label>
-                <div className="flex gap-2 flex-wrap">
-                  {(Object.keys(statusConfig) as SuggestionStatus[]).map((status) => {
-                    const config = statusConfig[status];
-                    const isActive = selectedSuggestion.status === status;
-                    return (
-                      <button
-                        key={status}
-                        onClick={() =>
-                          handleStatusChange(selectedSuggestion.suggestionId, status)
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                상태 변경
+              </label>
+              <div className="flex gap-2 flex-wrap" role="group" aria-label="상태 변경 버튼">
+                {(Object.keys(statusConfig) as SuggestionStatus[]).map((status) => {
+                  const config = statusConfig[status];
+                  const isActive = selectedSuggestion.status === status;
+                  return (
+                    <button
+                      key={status}
+                      onClick={() =>
+                        handleStatusChange(selectedSuggestion.suggestionId, status)
+                      }
+                      disabled={statusMutation.isPending}
+                      aria-pressed={isActive}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                        ${isActive
+                          ? 'ring-2 ring-offset-2 ring-primary-500'
+                          : 'hover:bg-gray-100'
                         }
-                        disabled={statusMutation.isPending}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                          ${isActive
-                            ? 'ring-2 ring-offset-2 ring-primary-500'
-                            : 'hover:bg-gray-100'
-                          }
-                          ${status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                          ${status === 'in_review' ? 'bg-blue-100 text-blue-800' : ''}
-                          ${status === 'resolved' ? 'bg-green-100 text-green-800' : ''}
-                          ${status === 'rejected' ? 'bg-gray-200 text-gray-800' : ''}
-                        `}
-                      >
-                        {config.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                        ${status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                        ${status === 'in_review' ? 'bg-blue-100 text-blue-800' : ''}
+                        ${status === 'resolved' ? 'bg-green-100 text-green-800' : ''}
+                        ${status === 'rejected' ? 'bg-gray-200 text-gray-800' : ''}
+                      `}
+                    >
+                      {config.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
