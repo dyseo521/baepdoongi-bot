@@ -28,6 +28,10 @@ pnpm cdk:deploy      # Deploy AWS CDK stacks
 # Dashboard deployment (after build)
 aws s3 sync packages/dashboard/out/ s3://baepdoongi-dashboard-<account>-<region> --delete
 aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
+
+# Knowledge Base 문서 관리
+npx tsx scripts/setup-knowledge-base.ts  # 문서 S3 업로드 + Console Sync 안내
+aws s3 sync docs/knowledge-base/ s3://baepdoongi-knowledge-425454508084-ap-northeast-2/  # 문서만 업로드
 ```
 
 ## Architecture
@@ -65,6 +69,15 @@ Bot Lambda (API Gateway)
 Dashboard (S3 + CloudFront)
 ├── 정적 HTML/JS/CSS
 └── API 호출 → Lambda
+
+RAG Pipeline (@뱁둥이 멘션 처리)
+├── Bot Lambda (app_mention) → SQS 발송 + "생각 중..." 응답
+├── SQS Queue (baepdoongi-rag-queue)
+├── RAG Lambda → Bedrock RetrieveAndGenerate → Slack 응답 업데이트
+└── Bedrock Knowledge Base (PPFC0WWCPC)
+    ├── 임베딩: Titan Embeddings G2 v2.0 (1024차원)
+    ├── 응답 생성: Claude Haiku 4.5 (Global CRIS)
+    └── 벡터 저장: S3 Vectors 버킷
 ```
 
 ### DynamoDB Single Table Design
@@ -80,6 +93,7 @@ All entities in one table:
 | Submission | `SUB#{id}` | `DETAIL` |
 | Deposit | `DEP#{id}` | `DETAIL` |
 | Log | `LOG` | `LOG#{createdAt}#{logId}` |
+| RagSession | `RAG_SESSION#{sessionId}` | `DETAIL` |
 
 GSI patterns:
 - `GSI1`: Query by entity type + timestamp (`GSI1PK`, `GSI1SK`)
@@ -166,7 +180,8 @@ import { saveEvent } from './services/db.service.js';
 
 - **Bot**: Slack Bolt 4.x, AWS Lambda (AwsLambdaReceiver), DynamoDB
 - **Dashboard**: Next.js 15 (Static Export), React 19, TanStack Query, TailwindCSS
-- **Infra**: AWS CDK (Lambda, API Gateway, DynamoDB, Secrets Manager, CloudFront, S3)
+- **AI/RAG**: Amazon Bedrock (Knowledge Base, Claude Haiku 4.5 via Global CRIS, Titan Embeddings)
+- **Infra**: AWS CDK (Lambda, API Gateway, DynamoDB, Secrets Manager, CloudFront, S3, S3 Vectors)
 - **Testing**: Vitest
 
 ## 추가 기능 구현 체크리스트
@@ -186,3 +201,52 @@ import { saveEvent } from './services/db.service.js';
 2. **이벤트 수정 시**: Slack 공지 메시지도 자동 업데이트됨 (응답 현황 유지)
 3. **회원 동기화**: Slack API에서 가져온 모든 회원 정보를 DynamoDB에 저장
 4. **Dashboard 배포**: 빌드 후 S3 sync + CloudFront invalidation 필요
+
+## RAG / Knowledge Base
+
+### 개요
+
+| 항목 | 값 |
+|------|-----|
+| Knowledge Base ID | `PPFC0WWCPC` |
+| 임베딩 모델 | Titan Embeddings G2 v2.0 (1024차원) |
+| 응답 모델 | Claude Haiku 4.5 (Global CRIS) |
+| 모델 프로필 ID | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| S3 Knowledge 버킷 | `baepdoongi-knowledge-425454508084-ap-northeast-2` |
+| S3 Vectors 버킷 | `baepdoongi-vectors-425454508084-ap-northeast-2` |
+
+### 문서 구조
+
+```
+docs/knowledge-base/
+├── 01-동아리-소개.md    # IGRUS 소개, 운영진, 연락처
+├── 02-회비-안내.md      # 회비 금액, 계좌 정보
+├── 03-활동-안내.md      # 스터디, 프로젝트, 행사
+├── 04-슬랙-가이드.md    # 프로필 규칙, 채널, 봇 사용법
+└── 05-FAQ.md           # 자주 묻는 질문 답변
+```
+
+### 문서 추가/수정 시
+
+1. `docs/knowledge-base/` 폴더에 마크다운 파일 추가/수정
+2. S3 업로드: `npx tsx scripts/setup-knowledge-base.ts` 또는 `aws s3 sync docs/knowledge-base/ s3://baepdoongi-knowledge-...`
+3. AWS Console에서 Knowledge Base Sync 실행
+   - URL: https://console.aws.amazon.com/bedrock/home?region=ap-northeast-2#/knowledge-bases/PPFC0WWCPC
+
+자세한 내용은 `docs/knowledge-base-guide.md` 참조.
+
+### Global Cross-Region Inference Profile
+
+서울 리전(ap-northeast-2)에서 Claude Haiku 4.5를 사용하기 위해 Global CRIS 프로필을 사용합니다.
+
+```typescript
+// packages/bot/src/services/rag.service.ts
+const CLAUDE_HAIKU_4_5_GLOBAL = 'global.anthropic.claude-haiku-4-5-20251001-v1:0';
+```
+
+**필요 IAM 권한** (bot-stack.ts에 정의됨):
+- `bedrock:GetInferenceProfile`
+- `bedrock:ListInferenceProfiles`
+- `bedrock:InvokeModel`
+- `bedrock:RetrieveAndGenerate`
+- `bedrock:Retrieve`
