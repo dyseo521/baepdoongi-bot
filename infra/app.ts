@@ -51,8 +51,11 @@ const bedrockStack = new BedrockStack(app, 'BaepdoongiBedrockStack', {
 
 // 4. 대시보드 스택 (S3 + CloudFront 정적 호스팅)
 // 봇 스택보다 먼저 생성하여 CloudFront 도메인을 CORS에 사용
-// API_GATEWAY_URL 환경변수가 있으면 CloudFront에서 /api/* 프록시 설정 (same-origin 쿠키 지원)
-const apiGatewayUrl = process.env['API_GATEWAY_URL']; // e.g., https://xxx.execute-api.ap-northeast-2.amazonaws.com/prod/
+// CloudFront에서 /api/* 프록시 설정 (same-origin 쿠키 지원)
+// 환경변수 또는 기본값 사용 (API Gateway URL은 배포 후 고정됨)
+const apiGatewayUrl =
+  process.env['API_GATEWAY_URL'] ||
+  'https://v2zb74shbf.execute-api.ap-northeast-2.amazonaws.com/prod/';
 const dashboardStack = new DashboardStack(app, 'BaepdoongiDashboardStack', {
   env,
   tags,
