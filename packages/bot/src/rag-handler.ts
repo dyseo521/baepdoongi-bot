@@ -88,11 +88,20 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
       // AI 면책 문구 추가
       const finalText = `${slackText}\n\n_이 응답은 AI가 생성했으며, 부정확할 수 있습니다._`;
 
-      // Slack 메시지 업데이트
+      // Slack 메시지 업데이트 (blocks로 mrkdwn 명시)
       await client.chat.update({
         channel,
         ts,
-        text: finalText,
+        text: finalText, // 알림용 fallback
+        blocks: [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: finalText,
+            },
+          },
+        ],
       });
 
       // 성공 로그 기록
