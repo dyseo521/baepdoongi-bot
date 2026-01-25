@@ -1,7 +1,9 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import { AuthProvider } from '@/contexts/auth-context';
+import { NProgressHandler } from '@/components/layout/nprogress-handler';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -17,6 +19,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Suspense fallback={null}>
+          <NProgressHandler />
+        </Suspense>
+        {children}
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

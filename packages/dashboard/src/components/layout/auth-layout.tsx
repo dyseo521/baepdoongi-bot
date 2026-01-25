@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { checkAuth } from '@/lib/auth';
+import { useAuth } from '@/contexts/auth-context';
 import { Sidebar } from './sidebar';
+import { PageSkeleton } from '../ui/skeleton';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -13,64 +13,30 @@ interface AuthLayoutProps {
 /**
  * 인증된 페이지용 레이아웃
  *
- * - 인증 상태 확인
+ * - AuthContext를 통해 전역 인증 상태 사용
+ * - 인증 로딩 중에도 사이드바 즉시 표시 (children만 스켈레톤)
  * - 미인증 시 로그인 페이지로 리다이렉트
- * - 사이드바 포함
  */
 export function AuthLayout({ children }: AuthLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    let mounted = true;
+    // 로딩이 끝났고 인증되지 않았으면 로그인으로 리다이렉트
+    if (!isLoading && !isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [isLoading, isAuthenticated, router, pathname]);
 
-    const verify = async () => {
-      try {
-        const authenticated = await checkAuth();
-
-        if (!mounted) return;
-
-        if (authenticated) {
-          setIsAuthenticated(true);
-        } else {
-          router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
-        }
-      } catch {
-        if (mounted) {
-          router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
-        }
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    verify();
-
-    return () => {
-      mounted = false;
-    };
-  }, [pathname, router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
+  // 인증 확인 중이거나 미인증 시에도 레이아웃은 표시 (사이드바 보임)
+  // children 영역만 스켈레톤으로 대체
   return (
     <div className="min-h-screen flex bg-gray-50">
       <Sidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto">
+        {isLoading ? <PageSkeleton /> : isAuthenticated ? children : <PageSkeleton />}
+      </main>
     </div>
   );
 }
