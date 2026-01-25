@@ -14,4 +14,8 @@ export {
   SuggestionsPageSkeleton,
   SubmissionsPageSkeleton,
   MatchingPageSkeleton,
+  DashboardSkeleton,
+  MembersPageSkeleton,
+  LogsPageSkeleton,
+  PaymentsPageSkeleton,
 } from './skeleton';
