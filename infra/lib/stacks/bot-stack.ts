@@ -96,8 +96,7 @@ export class BotStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(60),
       environment: {
         ...commonEnv,
-        // Knowledge Base는 AWS Console에서 수동 생성 후 ID 업데이트 필요
-        BEDROCK_KNOWLEDGE_BASE_ID: 'PLACEHOLDER_UPDATE_AFTER_KB_CREATION',
+        // Knowledge Base ID는 Secrets Manager에서 로드됨
       },
       architecture: lambda.Architecture.ARM_64,
     });
@@ -153,17 +152,33 @@ export class BotStack extends cdk.Stack {
 
     knowledgeBucket.grantRead(this.ragLambda);
 
-    // Bedrock 권한
+    // Bedrock 권한 (Cross-Region Inference Profile 포함)
     const bedrockPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
         'bedrock:InvokeModel',
         'bedrock:RetrieveAndGenerate',
         'bedrock:Retrieve',
+        'bedrock:GetInferenceProfile',
+        'bedrock:ListInferenceProfiles',
       ],
       resources: ['*'],
     });
     this.ragLambda.addToRolePolicy(bedrockPolicy);
+
+    // S3 Vectors 권한 (RAG Lambda용)
+    const s3VectorsPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        's3vectors:QueryVectors',
+        's3vectors:GetVectors',
+      ],
+      resources: [
+        `arn:aws:s3vectors:${this.region}:${this.account}:bucket/baepdoongi-vectors-${this.account}-${this.region}`,
+        `arn:aws:s3vectors:${this.region}:${this.account}:bucket/baepdoongi-vectors-${this.account}-${this.region}/index/*`,
+      ],
+    });
+    this.ragLambda.addToRolePolicy(s3VectorsPolicy);
 
     // SES 권한 (초대 이메일 발송)
     const sesPolicy = new iam.PolicyStatement({
