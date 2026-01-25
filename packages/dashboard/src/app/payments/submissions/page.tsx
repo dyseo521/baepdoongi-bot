@@ -117,15 +117,6 @@ function SubmissionsContent() {
       ),
     },
     {
-      key: 'hasPaid',
-      header: '자가체크',
-      render: (sub: Submission) => (
-        <span className={`text-sm ${sub.hasPaid === '네' ? 'text-blue-600' : 'text-gray-400'}`}>
-          {sub.hasPaid === '네' ? '✓' : '-'}
-        </span>
-      ),
-    },
-    {
       key: 'amount',
       header: '입금액',
       render: (sub: Submission) => {
@@ -145,7 +136,7 @@ function SubmissionsContent() {
     },
     {
       key: 'status',
-      header: '매칭상태',
+      header: '상태',
       render: (sub: Submission) => {
         const config = statusConfig[sub.status];
         return <Badge variant={config.variant}>{config.label}</Badge>;
