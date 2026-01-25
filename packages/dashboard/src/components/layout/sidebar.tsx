@@ -108,6 +108,8 @@ export function Sidebar() {
                   <>
                     <button
                       onClick={() => toggleMenu(item.name)}
+                      aria-expanded={isExpanded}
+                      aria-controls={`submenu-${item.name}`}
                       className={clsx(
                         'w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg transition-colors',
                         isActive
@@ -116,7 +118,7 @@ export function Sidebar() {
                       )}
                     >
                       <span className="flex items-center gap-3">
-                        <Icon className="w-5 h-5" />
+                        <Icon className="w-5 h-5" aria-hidden="true" />
                         <span>{item.name}</span>
                       </span>
                       <ChevronDown
@@ -124,10 +126,11 @@ export function Sidebar() {
                           'w-4 h-4 transition-transform',
                           isExpanded && 'rotate-180'
                         )}
+                        aria-hidden="true"
                       />
                     </button>
                     {isExpanded && item.children && (
-                      <ul className="mt-1 ml-4 space-y-1">
+                      <ul id={`submenu-${item.name}`} className="mt-1 ml-4 space-y-1">
                         {item.children.map((child) => {
                           const isChildActive = pathname.startsWith(child.href);
                           return (

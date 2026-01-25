@@ -147,8 +147,9 @@ export function ResponseOptionsEditor({ options, onChange }: ResponseOptionsEdit
               onClick={() => removeOption(index)}
               className="p-1 text-gray-400 hover:text-red-500 transition-colors"
               disabled={options.length <= 2}
+              aria-label={`${option.label} 옵션 삭제`}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         ))}
