@@ -11,8 +11,5 @@ export const handler: ScheduledHandler = async (event) => {
   // TODO: 이름 형식 검사 및 경고 DM 발송 구현
   // 현재는 placeholder
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: 'Name check completed' }),
-  };
+  console.log('[NameChecker] Name check completed');
 };
