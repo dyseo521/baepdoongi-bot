@@ -134,25 +134,28 @@ function MembersContent() {
           <div className="flex gap-2">
             <Button
               variant="secondary"
-              leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
+              leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />}
               onClick={() => refetch()}
               disabled={isLoading}
+              aria-label="회원 목록 새로고침"
             >
               새로고침
             </Button>
             <Button
               variant="secondary"
-              leftIcon={<MessageSquare className="w-4 h-4" />}
+              leftIcon={<MessageSquare className="w-4 h-4" aria-hidden="true" />}
               onClick={handleWarnAll}
               disabled={warnMutation.isPending}
+              aria-label="이름 형식 미준수 회원에게 전체 경고 DM 발송"
             >
               미준수 전체 경고
             </Button>
             <Button
               variant="primary"
-              leftIcon={<Download className="w-4 h-4" />}
+              leftIcon={<Download className="w-4 h-4" aria-hidden="true" />}
               onClick={() => syncMutation.mutate()}
               disabled={syncMutation.isPending}
+              aria-label="Slack 회원 정보 DB 동기화"
             >
               DB 동기화
             </Button>
