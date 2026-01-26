@@ -4,6 +4,7 @@
 
 import type {
   DashboardStats,
+  DashboardTrends,
   Member,
   Event,
   Suggestion,
@@ -39,6 +40,10 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 // Dashboard
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   return fetchAPI<DashboardStats>('/stats');
+}
+
+export async function fetchDashboardTrends(days: 7 | 14 | 30 = 7): Promise<DashboardTrends> {
+  return fetchAPI<DashboardTrends>(`/stats/trends?days=${days}`);
 }
 
 // Members

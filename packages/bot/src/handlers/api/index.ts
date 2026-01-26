@@ -10,7 +10,7 @@ import { handleAuth } from './auth.handler.js';
 import { handleMembers } from './members.handler.js';
 import { handleEvents } from './events.handler.js';
 import { handleLogs } from './logs.handler.js';
-import { handleStats } from './stats.handler.js';
+import { handleStats, handleStatsTrends } from './stats.handler.js';
 import { handleSuggestions } from './suggestions.handler.js';
 import { handleSlackChannels } from './slack-channels.handler.js';
 import { handlePayments } from './payments.handler.js';
@@ -139,8 +139,13 @@ export async function handleApiRequest(
       return await handleLogs(event);
     }
 
+    // /api/stats/trends
+    if (apiPath === '/stats/trends') {
+      return await handleStatsTrends(event);
+    }
+
     // /api/stats
-    if (apiPath.startsWith('/stats')) {
+    if (apiPath === '/stats') {
       return await handleStats(event);
     }
 

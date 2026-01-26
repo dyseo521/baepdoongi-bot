@@ -2,6 +2,7 @@
  * 대시보드 통계 API 핸들러
  *
  * GET /api/stats - 대시보드 통계 조회
+ * GET /api/stats/trends?days=7|14|30 - 일별 트렌드 데이터
  */
 
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
@@ -10,7 +11,14 @@ import { createResponse, createErrorResponse } from './index.js';
 import { getSecrets } from '../../services/secrets.service.js';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import type { DashboardStats, Event, Suggestion, Member } from '@baepdoongi/shared';
+import type {
+  DashboardStats,
+  DashboardTrends,
+  DailyDataPoint,
+  Event,
+  Suggestion,
+  Member,
+} from '@baepdoongi/shared';
 import { countTodayRagQueries } from '../../services/db.service.js';
 
 const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
@@ -174,4 +182,126 @@ async function fetchSlackMembers(): Promise<SlackMember[]> {
   } while (cursor);
 
   return members;
+}
+
+/**
+ * 일별 트렌드 데이터 조회
+ * GET /api/stats/trends?days=7|14|30
+ */
+export async function handleStatsTrends(
+  event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> {
+  if (event.httpMethod !== 'GET') {
+    return createErrorResponse(405, 'Method not allowed');
+  }
+
+  try {
+    const daysParam = event.queryStringParameters?.['days'];
+    const days = daysParam ? parseInt(daysParam, 10) : 7;
+
+    // 유효한 days 값 검증 (7, 14, 30만 허용)
+    if (![7, 14, 30].includes(days)) {
+      return createErrorResponse(400, 'days must be 7, 14, or 30');
+    }
+
+    // 날짜 범위 계산
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days + 1);
+    startDate.setHours(0, 0, 0, 0);
+
+    // 날짜별 초기화
+    const dateMap: Map<string, { members: number; ragQueries: number }> = new Map();
+    for (let i = 0; i < days; i++) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0] as string;
+      dateMap.set(dateStr, { members: 0, ragQueries: 0 });
+    }
+
+    // 1. 회원 가입 데이터 조회 (GSI1 사용)
+    const startDateStr = startDate.toISOString();
+    const endDateStr = new Date(endDate.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+    try {
+      const membersResult = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          IndexName: 'GSI1',
+          KeyConditionExpression: 'GSI1PK = :pk AND GSI1SK BETWEEN :start AND :end',
+          ExpressionAttributeValues: {
+            ':pk': 'MEMBER',
+            ':start': `MEMBER#${startDateStr}`,
+            ':end': `MEMBER#${endDateStr}`,
+          },
+        })
+      );
+
+      const members = (membersResult.Items as Member[]) || [];
+      for (const member of members) {
+        if (member.joinedAt) {
+          const dateStr = member.joinedAt.split('T')[0] as string;
+          const entry = dateMap.get(dateStr);
+          if (entry) {
+            entry.members += 1;
+          }
+        }
+      }
+    } catch (memberError) {
+      console.error('[Stats Trends] Member query error:', memberError);
+    }
+
+    // 2. RAG 쿼리 데이터 조회 (GSI2 사용)
+    try {
+      const ragResult = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          IndexName: 'GSI2',
+          KeyConditionExpression: 'GSI2PK = :pk AND GSI2SK BETWEEN :start AND :end',
+          ExpressionAttributeValues: {
+            ':pk': 'LOG#RAG_QUERY',
+            ':start': startDateStr,
+            ':end': endDateStr,
+          },
+        })
+      );
+
+      const ragLogs = ragResult.Items || [];
+      for (const log of ragLogs) {
+        const createdAt = (log as { GSI2SK?: string }).GSI2SK;
+        if (createdAt) {
+          const dateStr = createdAt.split('T')[0] as string;
+          const entry = dateMap.get(dateStr);
+          if (entry) {
+            entry.ragQueries += 1;
+          }
+        }
+      }
+    } catch (ragError) {
+      console.error('[Stats Trends] RAG query error:', ragError);
+    }
+
+    // 결과 변환
+    const dailyMembers: DailyDataPoint[] = [];
+    const dailyRagQueries: DailyDataPoint[] = [];
+
+    for (const [date, data] of dateMap) {
+      dailyMembers.push({ date, count: data.members });
+      dailyRagQueries.push({ date, count: data.ragQueries });
+    }
+
+    // 날짜 순 정렬
+    dailyMembers.sort((a, b) => a.date.localeCompare(b.date));
+    dailyRagQueries.sort((a, b) => a.date.localeCompare(b.date));
+
+    const trends: DashboardTrends = {
+      dailyMembers,
+      dailyRagQueries,
+    };
+
+    return createResponse(200, trends);
+  } catch (error) {
+    console.error('[Stats Trends] Error:', error);
+    return createErrorResponse(500, 'Failed to fetch trends');
+  }
 }

@@ -87,3 +87,21 @@ export interface DashboardStats {
   /** 오늘 RAG 질문 수 */
   ragQueriesToday: number;
 }
+
+/** 일별 데이터 포인트 */
+export interface DailyDataPoint {
+  /** 날짜 (YYYY-MM-DD) */
+  date: string;
+
+  /** 해당 날짜의 카운트 */
+  count: number;
+}
+
+/** 대시보드 트렌드 데이터 */
+export interface DashboardTrends {
+  /** 일별 회원 가입 수 */
+  dailyMembers: DailyDataPoint[];
+
+  /** 일별 RAG 질문 수 */
+  dailyRagQueries: DailyDataPoint[];
+}
