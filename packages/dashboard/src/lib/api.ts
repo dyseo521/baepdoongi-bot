@@ -154,6 +154,20 @@ export async function sendInviteEmail(submissionId: string): Promise<void> {
   });
 }
 
+// Delete Submission
+export async function deleteSubmission(submissionId: string): Promise<void> {
+  await fetchAPI(`/payments/submissions/${submissionId}`, {
+    method: 'DELETE',
+  });
+}
+
+// Delete Deposit
+export async function deleteDeposit(depositId: string): Promise<void> {
+  await fetchAPI(`/payments/deposits/${depositId}`, {
+    method: 'DELETE',
+  });
+}
+
 // Slack Channels
 export async function fetchSlackChannels(): Promise<SlackChannel[]> {
   return fetchAPI<SlackChannel[]>('/slack/channels');

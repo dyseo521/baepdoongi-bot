@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRightLeft, AlertTriangle, Clock, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, AlertTriangle, Clock, Mail, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { AuthLayout, PageHeader } from '@/components/layout';
-import { Badge, Button, MatchingPageSkeleton } from '@/components/ui';
-import { fetchSubmissions, fetchDeposits, manualMatch } from '@/lib/api';
+import { Badge, Button, MatchingPageSkeleton, ConfirmModal } from '@/components/ui';
+import { fetchSubmissions, fetchDeposits, manualMatch, deleteSubmission, deleteDeposit } from '@/lib/api';
 import type { Submission, Deposit } from '@baepdoongi/shared';
 import { getTimeDifferenceMinutes } from '@/lib/matching';
 
@@ -23,6 +23,7 @@ function MatchingContent() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [autoSendEmail, setAutoSendEmail] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'submission' | 'deposit'; item: Submission | Deposit } | null>(null);
 
   const { data: submissions = [], isLoading: isLoadingSubmissions } = useQuery<Submission[]>({
     queryKey: ['submissions'],
@@ -47,6 +48,41 @@ function MatchingContent() {
       setSelectedDeposit(null);
     },
   });
+
+  const deleteSubmissionMutation = useMutation({
+    mutationFn: (submissionId: string) => deleteSubmission(submissionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+      setDeleteTarget(null);
+      setSelectedSubmission(null);
+    },
+    onError: (error) => {
+      console.error('지원서 삭제 실패:', error);
+      alert('지원서 삭제에 실패했습니다.');
+    },
+  });
+
+  const deleteDepositMutation = useMutation({
+    mutationFn: (depositId: string) => deleteDeposit(depositId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deposits'] });
+      setDeleteTarget(null);
+      setSelectedDeposit(null);
+    },
+    onError: (error) => {
+      console.error('입금 삭제 실패:', error);
+      alert('입금 삭제에 실패했습니다.');
+    },
+  });
+
+  const handleDeleteConfirm = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === 'submission') {
+      deleteSubmissionMutation.mutate((deleteTarget.item as Submission).submissionId);
+    } else {
+      deleteDepositMutation.mutate((deleteTarget.item as Deposit).depositId);
+    }
+  };
 
   // 스켈레톤 로딩 표시
   if (isLoadingSubmissions || isLoadingDeposits) {
@@ -189,6 +225,7 @@ function MatchingContent() {
                     onClick={() => setSelectedSubmission(
                       selectedSubmission?.submissionId === sub.submissionId ? null : sub
                     )}
+                    onDelete={() => setDeleteTarget({ type: 'submission', item: sub })}
                   />
                 ))
               )}
@@ -216,6 +253,7 @@ function MatchingContent() {
                     onClick={() => setSelectedDeposit(
                       selectedDeposit?.depositId === dep.depositId ? null : dep
                     )}
+                    onDelete={() => setDeleteTarget({ type: 'deposit', item: dep })}
                   />
                 ))
               )}
@@ -233,11 +271,46 @@ function MatchingContent() {
                 입금자명 양식: <code className="bg-yellow-100 px-1 rounded">학번 2자리+이름</code> (예: 26김아그)
                 <br />
                 왼쪽에서 지원서를 선택하고, 오른쪽에서 해당하는 입금을 선택한 후 &quot;선택 항목 매칭&quot; 버튼을 클릭하세요.
+                <br />
+                잘못된 항목은 각 카드의 삭제 버튼으로 삭제할 수 있습니다.
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* 삭제 확인 모달 */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title={deleteTarget?.type === 'submission' ? '지원서 삭제' : '입금 삭제'}
+        message={
+          deleteTarget?.type === 'submission' ? (
+            <div>
+              <p className="mb-2">다음 지원서를 삭제하시겠습니까?</p>
+              <p className="font-medium text-gray-900">
+                {(deleteTarget.item as Submission).name} ({(deleteTarget.item as Submission).studentId})
+              </p>
+              <p className="text-sm text-red-500 mt-2">
+                삭제된 항목은 복구할 수 없습니다.
+              </p>
+            </div>
+          ) : deleteTarget?.type === 'deposit' ? (
+            <div>
+              <p className="mb-2">다음 입금을 삭제하시겠습니까?</p>
+              <p className="font-medium text-gray-900">
+                {(deleteTarget.item as Deposit).depositorName} ({formatCurrency((deleteTarget.item as Deposit).amount)}원)
+              </p>
+              <p className="text-sm text-red-500 mt-2">
+                삭제된 항목은 복구할 수 없습니다.
+              </p>
+            </div>
+          ) : null
+        }
+        confirmLabel="삭제"
+        isLoading={deleteSubmissionMutation.isPending || deleteDepositMutation.isPending}
+      />
     </div>
   );
 }
@@ -246,10 +319,12 @@ function SubmissionCard({
   submission,
   selected,
   onClick,
+  onDelete,
 }: {
   submission: Submission;
   selected: boolean;
   onClick: () => void;
+  onDelete: () => void;
 }) {
   const timeSinceSubmission = getTimeDifferenceMinutes(
     new Date(),
@@ -275,13 +350,25 @@ function SubmissionCard({
           </div>
           <div className="text-xs text-gray-400 mt-1">{submission.phone || '-'}</div>
         </div>
-        <div className="text-right">
-          {selected ? (
-            <Badge variant="info">선택됨</Badge>
-          ) : (
-            <Badge variant="warning">대기</Badge>
-          )}
-          <div className="text-xs text-gray-400 mt-1">
+        <div className="text-right flex flex-col items-end gap-1">
+          <div className="flex items-center gap-2">
+            {selected ? (
+              <Badge variant="info">선택됨</Badge>
+            ) : (
+              <Badge variant="warning">대기</Badge>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+              title="삭제"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="text-xs text-gray-400">
             {hours > 0 ? `${hours}시간 ` : ''}{minutes}분 전
           </div>
         </div>
@@ -295,11 +382,13 @@ function DepositCard({
   formatCurrency,
   selected,
   onClick,
+  onDelete,
 }: {
   deposit: Deposit;
   formatCurrency: (n: number) => string;
   selected: boolean;
   onClick: () => void;
+  onDelete: () => void;
 }) {
   return (
     <div
@@ -320,12 +409,22 @@ function DepositCard({
             {new Date(deposit.timestamp).toLocaleString('ko-KR')}
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-right flex items-center gap-2">
           {selected ? (
             <Badge variant="info">선택됨</Badge>
           ) : (
             <Badge variant="warning">대기</Badge>
           )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+            title="삭제"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
