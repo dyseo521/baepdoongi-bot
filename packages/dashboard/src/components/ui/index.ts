@@ -3,6 +3,7 @@ export { DataTable } from './data-table';
 export { Badge } from './badge';
 export { Button } from './button';
 export { Modal } from './modal';
+export { ConfirmModal } from './confirm-modal';
 export {
   Skeleton,
   SkeletonText,
@@ -14,6 +15,7 @@ export {
   SuggestionsPageSkeleton,
   SubmissionsPageSkeleton,
   MatchingPageSkeleton,
+  DepositsPageSkeleton,
   DashboardSkeleton,
   MembersPageSkeleton,
   LogsPageSkeleton,
