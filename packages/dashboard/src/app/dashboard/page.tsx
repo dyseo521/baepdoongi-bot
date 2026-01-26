@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users,
   CheckCircle,
@@ -10,10 +10,20 @@ import {
   MessageSquare,
   Bot,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { StatCard } from '@/components/ui';
-import { fetchDashboardStats, fetchEvents, fetchMembers } from '@/lib/api';
-import type { DashboardStats, Event, Member } from '@baepdoongi/shared';
+import { ChartCard, TrendsChart, QuickActions } from '@/components/dashboard';
+import {
+  fetchDashboardStats,
+  fetchDashboardTrends,
+  fetchEvents,
+  fetchMembers,
+  syncMembers,
+} from '@/lib/api';
+import type { DashboardStats, DashboardTrends, Event, Member } from '@baepdoongi/shared';
+
+type PeriodOption = 7 | 14 | 30;
 
 export default function DashboardPage() {
   return (
@@ -24,9 +34,24 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [membersPeriod, setMembersPeriod] = useState<PeriodOption>(7);
+  const [ragPeriod, setRagPeriod] = useState<PeriodOption>(7);
+
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboardStats'],
     queryFn: fetchDashboardStats,
+  });
+
+  const { data: membersTrends, isLoading: membersTrendsLoading } = useQuery<DashboardTrends>({
+    queryKey: ['dashboardTrends', 'members', membersPeriod],
+    queryFn: () => fetchDashboardTrends(membersPeriod),
+  });
+
+  const { data: ragTrends, isLoading: ragTrendsLoading } = useQuery<DashboardTrends>({
+    queryKey: ['dashboardTrends', 'rag', ragPeriod],
+    queryFn: () => fetchDashboardTrends(ragPeriod),
   });
 
   const { data: events = [], isLoading: eventsLoading } = useQuery<Event[]>({
@@ -36,7 +61,15 @@ function DashboardContent() {
 
   const { data: members = [], isLoading: membersLoading } = useQuery<Member[]>({
     queryKey: ['members'],
-    queryFn: () => fetchMembers('slack'),
+    queryFn: () => fetchMembers('db'),
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: syncMembers,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+    },
   });
 
   // 7일 이내 이벤트 필터링
@@ -60,6 +93,23 @@ function DashboardContent() {
       .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
   }, [members]);
 
+  // 이름 미준수 회원 수
+  const invalidNameCount = useMemo(() => {
+    return members.filter((m) => !m.isNameValid).length;
+  }, [members]);
+
+  const handleSyncMembers = () => {
+    syncMutation.mutate();
+  };
+
+  const handleCreateEvent = () => {
+    router.push('/dashboard/events?action=create');
+  };
+
+  const handleWarnInvalidNames = () => {
+    router.push('/dashboard/members?filter=invalid');
+  };
+
   return (
     <div>
       <PageHeader
@@ -67,7 +117,7 @@ function DashboardContent() {
         description="IGRUS 동아리 현황을 한눈에 확인하세요"
       />
 
-      <div className="p-8">
+      <div className="p-8 space-y-8">
         {/* 통계 카드 그리드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatCard
@@ -110,8 +160,43 @@ function DashboardContent() {
           />
         </div>
 
+        {/* 일별 트렌드 차트 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ChartCard
+            title="일별 가입 회원"
+            icon={UserPlus}
+            period={membersPeriod}
+            onPeriodChange={setMembersPeriod}
+            isLoading={membersTrendsLoading}
+          >
+            {membersTrends && (
+              <TrendsChart
+                data={membersTrends.dailyMembers}
+                color="#4f46e5"
+                gradientId="membersGradient"
+              />
+            )}
+          </ChartCard>
+
+          <ChartCard
+            title="일별 RAG 질문"
+            icon={Bot}
+            period={ragPeriod}
+            onPeriodChange={setRagPeriod}
+            isLoading={ragTrendsLoading}
+          >
+            {ragTrends && (
+              <TrendsChart
+                data={ragTrends.dailyRagQueries}
+                color="#10b981"
+                gradientId="ragGradient"
+              />
+            )}
+          </ChartCard>
+        </div>
+
         {/* 최근 활동 섹션 */}
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 최근 가입 회원 */}
           <div className="card p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -218,6 +303,15 @@ function DashboardContent() {
             )}
           </div>
         </div>
+
+        {/* 빠른 작업 */}
+        <QuickActions
+          onSyncMembers={handleSyncMembers}
+          onCreateEvent={handleCreateEvent}
+          onWarnInvalidNames={handleWarnInvalidNames}
+          isSyncing={syncMutation.isPending}
+          invalidNameCount={invalidNameCount}
+        />
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ function MembersContent() {
 
   const { data: members = [], isLoading, refetch } = useQuery<Member[]>({
     queryKey: ['members'],
-    queryFn: () => fetchMembers('slack'),
+    queryFn: () => fetchMembers('db'),
   });
 
   // 정렬된 데이터
