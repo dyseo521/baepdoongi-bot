@@ -677,4 +677,54 @@ export async function listMatches(): Promise<Match[]> {
   return (result.Items as Match[]) || [];
 }
 
+// ============================================
+// 삭제 함수
+// ============================================
+
+/**
+ * 지원서를 삭제합니다 (pending 상태만 삭제 가능).
+ */
+export async function deleteSubmission(submissionId: string): Promise<void> {
+  const submission = await getSubmission(submissionId);
+  if (!submission) {
+    throw new Error(`Submission not found: ${submissionId}`);
+  }
+  if (submission.status !== 'pending') {
+    throw new Error(`Cannot delete submission with status: ${submission.status}`);
+  }
+
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `SUB#${submissionId}`,
+        SK: 'DETAIL',
+      },
+    })
+  );
+}
+
+/**
+ * 입금 정보를 삭제합니다 (pending 상태만 삭제 가능).
+ */
+export async function deleteDeposit(depositId: string): Promise<void> {
+  const deposit = await getDeposit(depositId);
+  if (!deposit) {
+    throw new Error(`Deposit not found: ${depositId}`);
+  }
+  if (deposit.status !== 'pending') {
+    throw new Error(`Cannot delete deposit with status: ${deposit.status}`);
+  }
+
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `DEP#${depositId}`,
+        SK: 'DETAIL',
+      },
+    })
+  );
+}
+
 export { docClient, TABLE_NAME };

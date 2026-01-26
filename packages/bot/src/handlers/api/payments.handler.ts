@@ -10,11 +10,17 @@
  */
 
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { randomUUID } from 'crypto';
 import { createResponse, createErrorResponse } from './index.js';
 import {
   listSubmissions,
   listDeposits,
   listMatches,
+  deleteSubmission as deleteSubmissionFromDb,
+  deleteDeposit as deleteDepositFromDb,
+  getSubmission,
+  getDeposit,
+  saveLog,
 } from '../../services/db.service.js';
 import {
   manualMatch,
@@ -59,6 +65,18 @@ export async function handlePayments(
   // POST /api/payments/invite
   if (subPath === '/invite' && method === 'POST') {
     return handleSendInvite(event);
+  }
+
+  // DELETE /api/payments/submissions/:submissionId
+  const submissionDeleteMatch = subPath.match(/^\/submissions\/([^/]+)$/);
+  if (submissionDeleteMatch && method === 'DELETE') {
+    return handleDeleteSubmission(submissionDeleteMatch[1] ?? '');
+  }
+
+  // DELETE /api/payments/deposits/:depositId
+  const depositDeleteMatch = subPath.match(/^\/deposits\/([^/]+)$/);
+  if (depositDeleteMatch && method === 'DELETE') {
+    return handleDeleteDeposit(depositDeleteMatch[1] ?? '');
   }
 
   return createErrorResponse(404, 'Not found');
@@ -149,5 +167,77 @@ async function handleSendInvite(
   } catch (error) {
     console.error('[Payments API] Invite Error:', error);
     return createErrorResponse(500, 'Failed to send invite');
+  }
+}
+
+async function handleDeleteSubmission(
+  submissionId: string
+): Promise<APIGatewayProxyResult> {
+  try {
+    // 지원서 조회 (존재 및 상태 확인)
+    const submission = await getSubmission(submissionId);
+    if (!submission) {
+      return createErrorResponse(404, '지원서를 찾을 수 없습니다');
+    }
+    if (submission.status !== 'pending') {
+      return createErrorResponse(400, 'pending 상태의 지원서만 삭제할 수 있습니다');
+    }
+
+    // 삭제 실행
+    await deleteSubmissionFromDb(submissionId);
+
+    // 활동 로그 기록
+    await saveLog({
+      logId: `log_${randomUUID()}`,
+      type: 'SUBMISSION_DELETE',
+      userId: 'dashboard',
+      details: {
+        submissionId,
+        name: submission.name,
+        studentId: submission.studentId,
+      },
+    });
+
+    console.log(`[Payments API] Submission deleted: ${submissionId}`);
+    return createResponse(200, { success: true });
+  } catch (error) {
+    console.error('[Payments API] Delete Submission Error:', error);
+    return createErrorResponse(500, '지원서 삭제에 실패했습니다');
+  }
+}
+
+async function handleDeleteDeposit(
+  depositId: string
+): Promise<APIGatewayProxyResult> {
+  try {
+    // 입금 조회 (존재 및 상태 확인)
+    const deposit = await getDeposit(depositId);
+    if (!deposit) {
+      return createErrorResponse(404, '입금 정보를 찾을 수 없습니다');
+    }
+    if (deposit.status !== 'pending') {
+      return createErrorResponse(400, 'pending 상태의 입금만 삭제할 수 있습니다');
+    }
+
+    // 삭제 실행
+    await deleteDepositFromDb(depositId);
+
+    // 활동 로그 기록
+    await saveLog({
+      logId: `log_${randomUUID()}`,
+      type: 'DEPOSIT_DELETE',
+      userId: 'dashboard',
+      details: {
+        depositId,
+        depositorName: deposit.depositorName,
+        amount: deposit.amount,
+      },
+    });
+
+    console.log(`[Payments API] Deposit deleted: ${depositId}`);
+    return createResponse(200, { success: true });
+  } catch (error) {
+    console.error('[Payments API] Delete Deposit Error:', error);
+    return createErrorResponse(500, '입금 삭제에 실패했습니다');
   }
 }
