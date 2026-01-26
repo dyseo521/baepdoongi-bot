@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, Modal, SubmissionsPageSkeleton } from '@/components/ui';
@@ -28,6 +28,7 @@ function SubmissionsContent() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<SubmissionStatus | 'all'>('all');
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
 
   const { data: submissions = [], isLoading: isLoadingSubmissions, isError, error } = useQuery<Submission[]>({
     queryKey: ['submissions'],
@@ -259,16 +260,31 @@ function SubmissionsContent() {
         onClose={() => setSelectedSubmission(null)}
         title="지원서 상세"
         footer={
-          selectedSubmission?.status === 'matched' && !selectedSubmission?.emailSent ? (
-            <Button
-              className="w-full"
-              leftIcon={<Mail className="w-4 h-4" />}
-              onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
-              isLoading={sendEmailMutation.isPending}
-            >
-              초대 메일 발송
-            </Button>
-          ) : undefined
+          <div className="flex gap-2 w-full">
+            {selectedSubmission?.matchedDepositId && (
+              <Button
+                variant="ghost"
+                className="flex-1"
+                leftIcon={<CreditCard className="w-4 h-4" />}
+                onClick={() => {
+                  const deposit = depositMap.get(selectedSubmission.matchedDepositId!);
+                  if (deposit) setSelectedDeposit(deposit);
+                }}
+              >
+                입금 정보 보기
+              </Button>
+            )}
+            {selectedSubmission?.status === 'matched' && !selectedSubmission?.emailSent && (
+              <Button
+                className="flex-1"
+                leftIcon={<Mail className="w-4 h-4" />}
+                onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
+                isLoading={sendEmailMutation.isPending}
+              >
+                초대 메일 발송
+              </Button>
+            )}
+          </div>
         }
       >
         {selectedSubmission && (
@@ -311,6 +327,35 @@ function SubmissionsContent() {
               label="제출일"
               value={new Date(selectedSubmission.submittedAt).toLocaleString('ko-KR')}
             />
+          </div>
+        )}
+      </Modal>
+
+      {/* 입금 상세 모달 */}
+      <Modal
+        isOpen={!!selectedDeposit}
+        onClose={() => setSelectedDeposit(null)}
+        title="입금 정보"
+        titleIcon={<CreditCard className="w-5 h-5 text-green-600" />}
+      >
+        {selectedDeposit && (
+          <div className="p-6 space-y-4">
+            <InfoRow label="입금자명" value={selectedDeposit.depositorName} />
+            <InfoRow
+              label="금액"
+              value={`${new Intl.NumberFormat('ko-KR').format(selectedDeposit.amount)}원`}
+              highlight
+            />
+            <InfoRow
+              label="입금 시각"
+              value={new Date(selectedDeposit.timestamp).toLocaleString('ko-KR')}
+            />
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-medium text-gray-900 mb-2">원본 알림</h4>
+              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+                {selectedDeposit.rawNotification || '원본 알림 없음'}
+              </p>
+            </div>
           </div>
         )}
       </Modal>
