@@ -42,6 +42,7 @@ const navigation: NavigationItem[] = [
     icon: CreditCard,
     children: [
       { name: '지원서 관리', href: '/payments/submissions' },
+      { name: '입금 기록', href: '/payments/deposits' },
       { name: '수동 매칭', href: '/payments/matching' },
     ],
   },

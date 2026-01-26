@@ -140,7 +140,7 @@ function PaymentsContent() {
         </div>
 
         {/* 퀵 링크 */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
           <Link href="/payments/submissions" className="card p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-lg bg-primary-50 text-primary-600">
@@ -150,6 +150,20 @@ function PaymentsContent() {
                 <h3 className="font-semibold text-gray-900">지원서 관리</h3>
                 <p className="text-sm text-gray-500 mt-1">
                   구글 폼 지원서 목록 및 상태 관리
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/payments/deposits" className="card p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-600">
+                <CreditCard className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">입금 기록</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  전체 입금 내역 및 매칭 현황
                 </p>
               </div>
             </div>

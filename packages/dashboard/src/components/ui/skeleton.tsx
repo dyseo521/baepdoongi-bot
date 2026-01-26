@@ -424,6 +424,33 @@ export function LogsPageSkeleton() {
   );
 }
 
+export function DepositsPageSkeleton() {
+  return (
+    <div className="animate-in fade-in duration-300">
+      {/* Page Header with back button */}
+      <div className="px-8 py-6 border-b border-gray-200 bg-white flex justify-between items-start">
+        <div>
+          <Skeleton className="h-8 w-28 mb-2" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Skeleton className="h-10 w-24 rounded-lg" />
+      </div>
+
+      <div className="p-8 space-y-6">
+        {/* Filters - 4개 */}
+        <div className="flex gap-2 flex-wrap">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-8 w-28 rounded-lg" />
+          ))}
+        </div>
+
+        {/* Table - 6 columns */}
+        <SkeletonTable rows={8} columns={6} />
+      </div>
+    </div>
+  );
+}
+
 export function PaymentsPageSkeleton() {
   return (
     <div className="animate-in fade-in duration-300">
@@ -483,9 +510,9 @@ export function PaymentsPageSkeleton() {
           </div>
         </div>
 
-        {/* Quick links - 2개 */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2].map((i) => (
+        {/* Quick links - 3개 */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
             <div key={i} className="card p-6">
               <div className="flex items-center gap-4">
                 <Skeleton className="w-12 h-12 rounded-lg" />
