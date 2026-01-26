@@ -10,8 +10,8 @@ IGRUS 동아리 운영 자동화를 위한 Slack 봇 및 관리자 대시보드
 
 - **백엔드**: Node.js 22+, TypeScript, Slack Bolt, AWS Lambda
 - **프론트엔드**: Next.js 15 (Static Export), React 19, TailwindCSS
-- **인프라**: AWS CDK, API Gateway, DynamoDB, S3, CloudFront, SES
-- **AI**: Amazon Bedrock (Claude)
+- **인프라**: AWS CDK, API Gateway, DynamoDB, S3, CloudFront, SQS, Secrets Manager, SES
+- **AI**: Amazon Bedrock (Knowledge Base, Claude Haiku 4.5, Titan Embeddings)
 
 ## 주요 기능
 
