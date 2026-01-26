@@ -78,6 +78,15 @@ export async function handlePaymentWebhook(
 
     const { title, text } = body;
 
+    // 모임통장 입금만 처리 (다른 계좌 알림 무시)
+    if (!text.includes('모임통장')) {
+      console.log(`[Payment Webhook] 모임통장 아님, 무시: ${text}`);
+      return createResponse(200, {
+        success: false,
+        message: '모임통장 입금이 아닙니다. 무시됩니다.',
+      });
+    }
+
     // 입금 정보 파싱 (title, text 모두 전달)
     const parsed = parseDepositNotification(title, text);
 
