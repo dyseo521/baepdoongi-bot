@@ -302,13 +302,14 @@ export async function handleEventResponseInputSubmit({
       client,
     });
 
-    // 사용자에게 확인 메시지 (DM으로 전송)
-    if (result.success && result.event && result.responseOption) {
+    // 사용자에게 확인 메시지 (ephemeral - 채널에서 본인만 보이는 메시지)
+    if (result.success && result.event && result.responseOption && channelId) {
       const optionEmoji = result.responseOption.emoji || '';
       const optionLabel = result.responseOption.label;
 
-      await client.chat.postMessage({
-        channel: userId,
+      await client.chat.postEphemeral({
+        channel: channelId,
+        user: userId,
         text: `${optionEmoji} "${result.event.title}" 이벤트에 "${optionLabel}"(으)로 응답했습니다.${inputValue ? `\n> ${inputValue}` : ''}`,
       });
     }
