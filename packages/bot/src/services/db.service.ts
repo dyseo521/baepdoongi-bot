@@ -873,4 +873,25 @@ export async function completeBulkDMJob(
   );
 }
 
+/**
+ * 이벤트별 단체 DM 작업 목록을 조회합니다.
+ */
+export async function listBulkDMJobsByEvent(eventId: string): Promise<BulkDMJob[]> {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: GSI1_NAME,
+      KeyConditionExpression: 'GSI1PK = :pk AND begins_with(GSI1SK, :sk)',
+      ExpressionAttributeValues: {
+        ':pk': `EVENT#${eventId}`,
+        ':sk': 'DM_JOB#',
+      },
+      ScanIndexForward: false, // 최신순
+      Limit: 10,
+    })
+  );
+
+  return (result.Items as BulkDMJob[]) || [];
+}
+
 export { docClient, TABLE_NAME };

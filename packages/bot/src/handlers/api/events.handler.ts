@@ -9,6 +9,7 @@
  * POST /api/events/:eventId/announce - Slack 공지
  * POST /api/events/:eventId/bulk-dm - 단체 DM 발송
  * GET /api/events/:eventId/bulk-dm/:jobId - 단체 DM 작업 조회
+ * GET /api/events/:eventId/dm-history - DM 발송 이력 조회
  */
 
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
@@ -23,6 +24,7 @@ import {
   listMembers,
   saveBulkDMJob,
   getBulkDMJob as getBulkDMJobFromDB,
+  listBulkDMJobsByEvent,
 } from '../../services/db.service.js';
 import { buildEventAnnouncementBlocks } from '../../services/slack.service.js';
 import { getSecrets } from '../../services/secrets.service.js';
@@ -89,6 +91,12 @@ export async function handleEvents(
   const bulkDMJobMatch = subPath.match(/^\/([^/]+)\/bulk-dm\/([^/]+)$/);
   if (bulkDMJobMatch?.[1] && bulkDMJobMatch?.[2] && method === 'GET') {
     return handleGetBulkDMJob(bulkDMJobMatch[2]);
+  }
+
+  // /api/events/:eventId/dm-history (GET)
+  const dmHistoryMatch = subPath.match(/^\/([^/]+)\/dm-history$/);
+  if (dmHistoryMatch?.[1] && method === 'GET') {
+    return handleGetDMHistory(dmHistoryMatch[1]);
   }
 
   // /api/events/:eventId
@@ -560,5 +568,16 @@ async function handleGetBulkDMJob(jobId: string): Promise<APIGatewayProxyResult>
   } catch (error) {
     console.error('[Events API] GetBulkDMJob Error:', error);
     return createErrorResponse(500, 'Failed to fetch bulk DM job');
+  }
+}
+
+async function handleGetDMHistory(eventId: string): Promise<APIGatewayProxyResult> {
+  try {
+    const jobs = await listBulkDMJobsByEvent(eventId);
+
+    return createResponse(200, { jobs });
+  } catch (error) {
+    console.error('[Events API] GetDMHistory Error:', error);
+    return createErrorResponse(500, 'Failed to fetch DM history');
   }
 }

@@ -1,18 +1,80 @@
 'use client';
 
 import { clsx } from 'clsx';
-import { Users, Clock, MessageSquare, Check } from 'lucide-react';
+import { Users, Clock, MessageSquare, Check, History } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Modal, Skeleton } from '../ui';
 import { DMSendSection } from './dm-send-section';
-import { fetchEventRSVPs } from '../../lib/api';
-import type { Event, RSVPWithMember, EventResponseOption } from '@baepdoongi/shared';
+import { fetchEventRSVPs, getEventDMHistory } from '../../lib/api';
+import type { Event, RSVPWithMember, EventResponseOption, BulkDMJob } from '@baepdoongi/shared';
+import { DM_TEMPLATES } from '@baepdoongi/shared';
 
 interface RSVPListModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: Event | null;
+}
+
+/** 템플릿 ID로 이름 가져오기 */
+function getTemplateName(templateId: string): string {
+  const template = DM_TEMPLATES.find(t => t.templateId === templateId);
+  return template?.name || templateId;
+}
+
+/** 날짜 포맷 */
+function formatDateTime(isoString: string): string {
+  const date = new Date(isoString);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${month}/${day} ${hours}:${minutes}`;
+}
+
+/** DM 발송 이력 섹션 */
+function DMHistorySection({ eventId }: { eventId: string }) {
+  const { data: jobs, isLoading } = useQuery({
+    queryKey: ['dm-history', eventId],
+    queryFn: () => getEventDMHistory(eventId),
+    staleTime: 30000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <Skeleton className="w-32 h-4 mb-2" />
+        <Skeleton className="w-full h-8" />
+      </div>
+    );
+  }
+
+  if (!jobs || jobs.length === 0) return null;
+
+  return (
+    <div className="mt-4 pt-4 border-t border-gray-200">
+      <div className="flex items-center gap-2 mb-3">
+        <History className="w-4 h-4 text-gray-500" />
+        <h4 className="text-sm font-medium text-gray-700">최근 DM 발송 이력</h4>
+      </div>
+      <div className="space-y-2">
+        {jobs.map((job: BulkDMJob) => (
+          <div key={job.jobId} className="flex items-center justify-between text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+            <span className="font-medium">{getTemplateName(job.templateId)}</span>
+            <span className={clsx(
+              job.failedCount > 0 ? 'text-orange-600' : 'text-green-600'
+            )}>
+              {job.sentCount}명 발송
+              {job.failedCount > 0 && ` (${job.failedCount}건 실패)`}
+            </span>
+            <span className="text-gray-400">
+              {job.completedAt ? formatDateTime(job.completedAt) : formatDateTime(job.createdAt)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
@@ -193,6 +255,7 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
               event={event}
               selectedUserIds={Array.from(selectedMembers)}
               onDMSent={handleDMSent}
+              onCloseModal={handleClose}
             />
 
             {filteredRSVPs.length === 0 ? (
@@ -240,6 +303,9 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
                 </div>
               </>
             )}
+
+            {/* DM 발송 이력 섹션 */}
+            <DMHistorySection eventId={event.eventId} />
           </>
         )}
       </div>

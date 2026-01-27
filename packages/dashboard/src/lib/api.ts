@@ -213,3 +213,9 @@ export async function sendBulkDM(
 export async function getBulkDMJob(eventId: string, jobId: string): Promise<BulkDMJob> {
   return fetchAPI<BulkDMJob>(`/events/${eventId}/bulk-dm/${jobId}`);
 }
+
+// DM History
+export async function getEventDMHistory(eventId: string): Promise<BulkDMJob[]> {
+  const response = await fetchAPI<{ jobs: BulkDMJob[] }>(`/events/${eventId}/dm-history`);
+  return response.jobs;
+}
