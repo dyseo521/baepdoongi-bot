@@ -15,6 +15,15 @@ export interface EventResponseOption {
 
   /** 정렬 순서 */
   order: number;
+
+  /** 텍스트 입력 필요 여부 (기본: false) */
+  requiresInput?: boolean;
+
+  /** 입력 필드 레이블 (예: '불참 사유') */
+  inputLabel?: string;
+
+  /** 입력 필드 플레이스홀더 */
+  inputPlaceholder?: string;
 }
 
 /** Slack 공지 정보 */
@@ -144,6 +153,27 @@ export interface RSVP {
 
   /** 커스텀 응답 옵션 ID (Slack 공지 응답용) */
   responseOptionId?: string;
+
+  /** 사용자 입력 값 (requiresInput이 true인 옵션 응답 시) */
+  inputValue?: string;
+}
+
+/** 회원 정보가 포함된 RSVP (API 응답용) */
+export interface RSVPWithMember extends RSVP {
+  /** 회원 이름 */
+  memberName?: string;
+
+  /** 회원 프로필 이미지 URL */
+  memberImageUrl?: string;
+}
+
+/** RSVP 목록 API 응답 */
+export interface RSVPListResponse {
+  /** RSVP 목록 */
+  rsvps: RSVPWithMember[];
+
+  /** 옵션별 응답 수 요약 */
+  summary: Record<string, number>;
 }
 
 /** RSVP 상태 */
