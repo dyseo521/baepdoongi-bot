@@ -9,7 +9,7 @@ import type { SQSEvent, SQSHandler } from 'aws-lambda';
 import { WebClient } from '@slack/web-api';
 import { saveLog, completeBulkDMJob, updateBulkDMJobProgress } from './services/db.service.js';
 import { getSecrets } from './services/secrets.service.js';
-import { generateId } from './utils/id.js';
+import { generateId, formatEventDateTimeForDisplay } from './utils/index.js';
 import { DM_TEMPLATES } from '@baepdoongi/shared';
 
 /** SQS 메시지 페이로드 타입 */
@@ -22,6 +22,13 @@ interface DMQueueMessage {
   eventTitle: string;
   eventDatetime: string;
   eventLocation?: string;
+  // 새 날짜/시간 필드
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  isMultiDay?: boolean;
+  hasTime?: boolean;
 }
 
 // Slack 클라이언트 (지연 초기화)
@@ -43,16 +50,39 @@ async function getSlackClient(): Promise<WebClient> {
   return slackClient;
 }
 
+/** 템플릿 렌더링 옵션 */
+interface RenderTemplateOptions {
+  templateId: string;
+  customMessage?: string;
+  eventTitle: string;
+  eventDatetime: string;
+  eventLocation?: string;
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  isMultiDay?: boolean;
+  hasTime?: boolean;
+}
+
 /**
  * 템플릿 변수 치환
  */
-function renderTemplate(
-  templateId: string,
-  customMessage: string | undefined,
-  eventTitle: string,
-  eventDatetime: string,
-  eventLocation: string | undefined
-): string {
+function renderTemplate(options: RenderTemplateOptions): string {
+  const {
+    templateId,
+    customMessage,
+    eventTitle,
+    eventDatetime,
+    eventLocation,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    isMultiDay,
+    hasTime,
+  } = options;
+
   const template = DM_TEMPLATES.find((t) => t.templateId === templateId);
   if (!template) {
     return customMessage || '';
@@ -63,15 +93,15 @@ function renderTemplate(
     return customMessage || '';
   }
 
-  // 날짜 포맷팅
-  const date = new Date(eventDatetime);
-  const datetime = date.toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
+  // 날짜 포맷팅 (새 필드가 있으면 사용, 없으면 기존 datetime 사용)
+  const datetime = formatEventDateTimeForDisplay({
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    isMultiDay,
+    hasTime,
+    datetime: eventDatetime,
   });
 
   return template.messageTemplate
@@ -145,13 +175,40 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
         templateId: message.templateId,
       });
 
-      const { jobId, eventId, userIds, templateId, customMessage, eventTitle, eventDatetime, eventLocation } = message;
+      const {
+        jobId,
+        eventId,
+        userIds,
+        templateId,
+        customMessage,
+        eventTitle,
+        eventDatetime,
+        eventLocation,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        isMultiDay,
+        hasTime,
+      } = message;
 
       // 작업 시작 - status를 'processing'으로 업데이트
       await updateBulkDMJobProgress(jobId, 0, 0, 'processing');
 
       // 메시지 렌더링
-      const renderedMessage = renderTemplate(templateId, customMessage, eventTitle, eventDatetime, eventLocation);
+      const renderedMessage = renderTemplate({
+        templateId,
+        customMessage,
+        eventTitle,
+        eventDatetime,
+        eventLocation,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        isMultiDay,
+        hasTime,
+      });
 
       if (!renderedMessage) {
         throw new Error('메시지 렌더링 실패');

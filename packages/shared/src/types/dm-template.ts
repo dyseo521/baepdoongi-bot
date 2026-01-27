@@ -29,6 +29,8 @@ export const DM_TEMPLATES: DMTemplate[] = [
 
 📍 장소: {{location}}
 
+{{customMessage}}
+
 행사장에서 뵙겠습니다! 😊`,
   },
   {
