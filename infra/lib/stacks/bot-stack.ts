@@ -39,6 +39,8 @@ export class BotStack extends cdk.Stack {
   public readonly botLambda: lambda.Function;
   /** RAG 처리 Lambda */
   public readonly ragLambda: lambda.Function;
+  /** DM Worker Lambda */
+  public readonly dmWorkerLambda: lambda.Function;
   /** 이름 검사 Lambda */
   public readonly nameCheckerLambda: lambda.Function;
   /** API Gateway */
@@ -53,6 +55,13 @@ export class BotStack extends cdk.Stack {
     const ragQueue = new sqs.Queue(this, 'RagQueue', {
       queueName: 'baepdoongi-rag-queue',
       visibilityTimeout: cdk.Duration.seconds(60),
+      retentionPeriod: cdk.Duration.days(1),
+    });
+
+    // SQS 큐: 단체 DM 발송용 (Rate Limiting 대응)
+    const dmQueue = new sqs.Queue(this, 'DmQueue', {
+      queueName: 'baepdoongi-dm-queue',
+      visibilityTimeout: cdk.Duration.minutes(5), // 100명 발송 시 약 2분 소요
       retentionPeriod: cdk.Duration.days(1),
     });
 
@@ -77,6 +86,7 @@ export class BotStack extends cdk.Stack {
       environment: {
         ...commonEnv,
         RAG_QUEUE_URL: ragQueue.queueUrl,
+        DM_QUEUE_URL: dmQueue.queueUrl,
         SES_FROM_EMAIL: 'weareigrus@gmail.com',
         SLACK_INVITE_LINK: 'https://join.slack.com/t/igrus/shared_invite/xxx', // 실제 링크로 변경 필요
       },
@@ -116,9 +126,32 @@ export class BotStack extends cdk.Stack {
       architecture: lambda.Architecture.ARM_64,
     });
 
+    // DM Worker Lambda (단체 DM 발송)
+    this.dmWorkerLambda = new lambda.Function(this, 'DmWorkerLambda', {
+      functionName: 'baepdoongi-dm-worker',
+      description: '단체 DM 발송 처리',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'dm-worker.handler',
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, '../../../../packages/bot/dist')
+      ),
+      memorySize: 256,
+      timeout: cdk.Duration.minutes(5), // 100명 발송 시 약 2분 소요
+      environment: commonEnv,
+      architecture: lambda.Architecture.ARM_64,
+      reservedConcurrentExecutions: 1, // Rate Limiting 준수를 위해 동시 실행 제한
+    });
+
     // SQS를 RAG Lambda의 이벤트 소스로 연결
     this.ragLambda.addEventSource(
       new lambdaEventSources.SqsEventSource(ragQueue, {
+        batchSize: 1,
+      })
+    );
+
+    // SQS를 DM Worker Lambda의 이벤트 소스로 연결
+    this.dmWorkerLambda.addEventSource(
+      new lambdaEventSources.SqsEventSource(dmQueue, {
         batchSize: 1,
       })
     );
@@ -127,6 +160,7 @@ export class BotStack extends cdk.Stack {
     table.grantReadWriteData(this.botLambda);
     table.grantReadWriteData(this.ragLambda);
     table.grantReadWriteData(this.nameCheckerLambda);
+    table.grantReadWriteData(this.dmWorkerLambda);
 
     // GSI 쿼리 권한 (Table.fromTableName은 GSI 권한을 자동 부여하지 않음)
     const gsiPolicy = new iam.PolicyStatement({
@@ -142,13 +176,18 @@ export class BotStack extends cdk.Stack {
     this.botLambda.addToRolePolicy(gsiPolicy);
     this.ragLambda.addToRolePolicy(gsiPolicy);
     this.nameCheckerLambda.addToRolePolicy(gsiPolicy);
+    this.dmWorkerLambda.addToRolePolicy(gsiPolicy);
 
     slackSecret.grantRead(this.botLambda);
     slackSecret.grantRead(this.ragLambda);
     slackSecret.grantRead(this.nameCheckerLambda);
+    slackSecret.grantRead(this.dmWorkerLambda);
 
     ragQueue.grantSendMessages(this.botLambda);
     ragQueue.grantConsumeMessages(this.ragLambda);
+
+    dmQueue.grantSendMessages(this.botLambda);
+    dmQueue.grantConsumeMessages(this.dmWorkerLambda);
 
     knowledgeBucket.grantRead(this.ragLambda);
 
