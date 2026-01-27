@@ -46,8 +46,8 @@ export class CiCdStack extends cdk.Stack {
           'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
         },
         StringLike: {
-          // main 브랜치에서만 assume 가능
-          'token.actions.githubusercontent.com:sub': `repo:${githubRepo}:ref:refs/heads/main`,
+          // production 환경에서만 assume 가능 (workflow의 environment: production)
+          'token.actions.githubusercontent.com:sub': `repo:${githubRepo}:environment:production`,
         },
       }),
       maxSessionDuration: cdk.Duration.hours(1),

@@ -207,7 +207,7 @@ jobs:
           aws-region: ap-northeast-2
 
       - name: Deploy CDK stacks
-        run: pnpm cdk -- deploy --all --require-approval never
+        run: pnpm --filter @baepdoongi/infra cdk deploy --all --require-approval never
         env:
           CDK_DEFAULT_ACCOUNT: 425454508084
           CDK_DEFAULT_REGION: ap-northeast-2
