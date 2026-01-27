@@ -159,7 +159,7 @@ export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseO
             onClick={() => applyTemplate('basic')}
             className="text-sm px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
           >
-            기본 (1️⃣2️⃣)
+            기본
           </button>
         </div>
       )}

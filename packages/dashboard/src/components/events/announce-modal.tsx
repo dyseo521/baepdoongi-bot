@@ -36,7 +36,7 @@ export function AnnounceModal({
   const [channels, setChannels] = useState<SlackChannel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string>('');
   const [responseOptions, setResponseOptions] = useState<EventResponseOption[]>(
-    RESPONSE_TEMPLATES.simple
+    RESPONSE_TEMPLATES.basic
   );
   const [allowMultipleSelection, setAllowMultipleSelection] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,7 +82,7 @@ export function AnnounceModal({
   useEffect(() => {
     if (isOpen && event) {
       setSelectedChannelId('');
-      setResponseOptions([...RESPONSE_TEMPLATES.simple]);
+      setResponseOptions([...RESPONSE_TEMPLATES.basic]);
       setAllowMultipleSelection(false);
       setError(null);
     }
@@ -256,6 +256,7 @@ export function AnnounceModal({
                   .sort((a, b) => a.order - b.order)
                   .map((opt) => `${opt.emoji || ''} ${opt.label}: 0명`)
                   .join(' | ')}
+                {allowMultipleSelection && ' | (중복 선택 가능)'}
               </div>
               <div className="flex flex-wrap gap-2">
                 {responseOptions
