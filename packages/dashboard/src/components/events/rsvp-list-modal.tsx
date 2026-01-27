@@ -1,10 +1,11 @@
 'use client';
 
 import { clsx } from 'clsx';
-import { Users, Clock, MessageSquare } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { Users, Clock, MessageSquare, Check } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Modal, Skeleton } from '../ui';
+import { DMSendSection } from './dm-send-section';
 import { fetchEventRSVPs } from '../../lib/api';
 import type { Event, RSVPWithMember, EventResponseOption } from '@baepdoongi/shared';
 
@@ -16,8 +17,9 @@ interface RSVPListModalProps {
 
 export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['event-rsvps', event?.eventId],
     queryFn: () => (event ? fetchEventRSVPs(event.eventId) : Promise.resolve(null)),
     enabled: isOpen && !!event,
@@ -47,6 +49,20 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
     });
   }, [data?.rsvps, currentTab]);
 
+  // 현재 탭의 모든 회원 ID
+  const currentTabMemberIds = useMemo(() => {
+    return filteredRSVPs.map((rsvp) => rsvp.memberId);
+  }, [filteredRSVPs]);
+
+  // 현재 탭에서 선택된 회원만 필터링
+  const selectedInCurrentTab = useMemo(() => {
+    return currentTabMemberIds.filter((id) => selectedMembers.has(id));
+  }, [currentTabMemberIds, selectedMembers]);
+
+  // 전체 선택 상태
+  const isAllSelected = currentTabMemberIds.length > 0 &&
+    selectedInCurrentTab.length === currentTabMemberIds.length;
+
   const formatTime = (isoString: string) => {
     const date = new Date(isoString);
     const month = date.getMonth() + 1;
@@ -56,17 +72,62 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
     return `${month}/${day} ${hours}:${minutes}`;
   };
 
+  // 전체 선택/해제
+  const handleSelectAll = useCallback(() => {
+    if (isAllSelected) {
+      // 현재 탭 회원 전체 해제
+      setSelectedMembers((prev) => {
+        const next = new Set(prev);
+        currentTabMemberIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      // 현재 탭 회원 전체 선택
+      setSelectedMembers((prev) => {
+        const next = new Set(prev);
+        currentTabMemberIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  }, [isAllSelected, currentTabMemberIds]);
+
+  // 개별 선택/해제
+  const handleToggleMember = useCallback((memberId: string) => {
+    setSelectedMembers((prev) => {
+      const next = new Set(prev);
+      if (next.has(memberId)) {
+        next.delete(memberId);
+      } else {
+        next.add(memberId);
+      }
+      return next;
+    });
+  }, []);
+
+  // DM 발송 완료 후 처리
+  const handleDMSent = useCallback(() => {
+    setSelectedMembers(new Set());
+    refetch();
+  }, [refetch]);
+
+  // 모달 닫을 때 선택 초기화
+  const handleClose = useCallback(() => {
+    setSelectedMembers(new Set());
+    setActiveTab(null);
+    onClose();
+  }, [onClose]);
+
   if (!event) return null;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
-      title="응답 현황"
+      onClose={handleClose}
+      title="응답 현황 및 DM 발송"
       titleIcon={<Users className="w-5 h-5" />}
       maxWidth="lg"
     >
-      <div className="min-h-[300px]">
+      <div className="min-h-[400px]">
         {/* 탭 네비게이션 */}
         <div className="flex gap-1 border-b border-gray-200 mb-4 overflow-x-auto">
           {responseOptions.map((option) => {
@@ -127,17 +188,57 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
         {/* RSVP 목록 */}
         {!isLoading && !error && (
           <>
+            {/* DM 발송 섹션 */}
+            <DMSendSection
+              event={event}
+              selectedUserIds={Array.from(selectedMembers)}
+              onDMSent={handleDMSent}
+            />
+
             {filteredRSVPs.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p>아직 응답한 회원이 없습니다</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {filteredRSVPs.map((rsvp) => (
-                  <RSVPItem key={rsvp.memberId} rsvp={rsvp} formatTime={formatTime} />
-                ))}
-              </div>
+              <>
+                {/* 전체 선택 체크박스 */}
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 mb-2">
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    className={clsx(
+                      'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+                      isAllSelected
+                        ? 'bg-primary-600 border-primary-600 text-white'
+                        : 'border-gray-300 hover:border-primary-500'
+                    )}
+                  >
+                    {isAllSelected && <Check className="w-3 h-3" />}
+                  </button>
+                  <span className="text-sm text-gray-700">
+                    전체 선택 ({filteredRSVPs.length}명)
+                  </span>
+                  {selectedInCurrentTab.length > 0 && (
+                    <span className="text-xs text-primary-600 ml-auto">
+                      {selectedInCurrentTab.length}명 선택됨
+                    </span>
+                  )}
+                </div>
+
+                {/* 회원 목록 */}
+                <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                  {filteredRSVPs.map((rsvp) => (
+                    <RSVPItem
+                      key={rsvp.memberId}
+                      rsvp={rsvp}
+                      formatTime={formatTime}
+                      isSelected={selectedMembers.has(rsvp.memberId)}
+                      onToggle={() => handleToggleMember(rsvp.memberId)}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </>
         )}
@@ -149,20 +250,45 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
 interface RSVPItemProps {
   rsvp: RSVPWithMember;
   formatTime: (isoString: string) => string;
+  isSelected: boolean;
+  onToggle: () => void;
 }
 
-function RSVPItem({ rsvp, formatTime }: RSVPItemProps) {
+function RSVPItem({ rsvp, formatTime, isSelected, onToggle }: RSVPItemProps) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+    <div
+      className={clsx(
+        'flex items-start gap-3 p-3 rounded-lg transition-colors cursor-pointer',
+        isSelected ? 'bg-primary-50' : 'hover:bg-gray-50'
+      )}
+      onClick={onToggle}
+    >
+      {/* 체크박스 */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        className={clsx(
+          'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-1',
+          isSelected
+            ? 'bg-primary-600 border-primary-600 text-white'
+            : 'border-gray-300 hover:border-primary-500'
+        )}
+      >
+        {isSelected && <Check className="w-3 h-3" />}
+      </button>
+
       {/* 아바타 */}
       {rsvp.memberImageUrl ? (
         <img
           src={rsvp.memberImageUrl}
           alt={rsvp.memberName || '회원'}
-          className="w-10 h-10 rounded-full object-cover"
+          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
         />
       ) : (
-        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
           <span className="text-gray-500 text-sm font-medium">
             {(rsvp.memberName || '?')[0]}
           </span>

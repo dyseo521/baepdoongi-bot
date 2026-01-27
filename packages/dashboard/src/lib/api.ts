@@ -17,6 +17,9 @@ import type {
   EventResponseOption,
   AnnounceEventResponse,
   RSVPListResponse,
+  BulkDMRequest,
+  BulkDMJob,
+  BulkDMJobResponse,
 } from '@baepdoongi/shared';
 
 const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || '/api';
@@ -194,4 +197,19 @@ export async function announceEvent(
 // Event RSVPs
 export async function fetchEventRSVPs(eventId: string): Promise<RSVPListResponse> {
   return fetchAPI<RSVPListResponse>(`/events/${eventId}/rsvps`);
+}
+
+// Bulk DM
+export async function sendBulkDM(
+  eventId: string,
+  request: BulkDMRequest
+): Promise<BulkDMJobResponse> {
+  return fetchAPI<BulkDMJobResponse>(`/events/${eventId}/bulk-dm`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+export async function getBulkDMJob(eventId: string, jobId: string): Promise<BulkDMJob> {
+  return fetchAPI<BulkDMJob>(`/events/${eventId}/bulk-dm/${jobId}`);
 }

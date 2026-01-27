@@ -236,7 +236,7 @@ function EventsContent() {
                 leftIcon={<Users className="w-3 h-3" />}
                 onClick={() => openRSVPModal(event)}
               >
-                응답 확인
+                응답 현황
               </Button>
             ) : (
               <Button
