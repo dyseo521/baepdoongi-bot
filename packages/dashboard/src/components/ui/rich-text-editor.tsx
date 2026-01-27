@@ -26,6 +26,7 @@ export function RichTextEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
 
   // Slack mrkdwn → HTML 변환 (실시간 미리보기용)
   const formattedHtml = useMemo(() => {
@@ -161,6 +162,20 @@ export function RichTextEditor({
     }
   }, []);
 
+  // 텍스트 선택 상태 감지
+  const handleSelect = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const hasActiveSelection = textarea.selectionStart !== textarea.selectionEnd;
+      setHasSelection(hasActiveSelection);
+    }
+  }, []);
+
+  // 포커스 해제 시 선택 상태 리셋
+  const handleBlur = useCallback(() => {
+    setHasSelection(false);
+  }, []);
+
   // Calculate height based on rows
   const textareaHeight = `${rows * 1.5 + 1}rem`;
 
@@ -287,27 +302,29 @@ export function RichTextEditor({
 
       {/* Editor container with overlay */}
       <div className="relative border border-gray-300 rounded-b-lg overflow-hidden">
-        {/* Formatted overlay (behind textarea) */}
-        <div
-          className={clsx(
-            'rich-text-overlay absolute inset-0 px-3 py-2',
-            'text-sm text-gray-900 leading-relaxed',
-            'whitespace-pre-wrap break-words',
-            'pointer-events-none overflow-auto',
-            'bg-white',
-            'font-[system-ui]'
-          )}
-          style={{ height: textareaHeight }}
-          aria-hidden="true"
-        >
-          {formattedHtml ? (
-            <div dangerouslySetInnerHTML={{ __html: formattedHtml }} />
-          ) : (
-            <span className="text-gray-400">{placeholder}</span>
-          )}
-        </div>
+        {/* Formatted overlay (선택 중이 아닐 때만 표시) */}
+        {!hasSelection && (
+          <div
+            className={clsx(
+              'rich-text-overlay absolute inset-0 px-3 py-2',
+              'text-sm text-gray-900 leading-relaxed',
+              'whitespace-pre-wrap break-words',
+              'pointer-events-none overflow-auto',
+              'bg-white',
+              'font-[system-ui]'
+            )}
+            style={{ height: textareaHeight }}
+            aria-hidden="true"
+          >
+            {formattedHtml ? (
+              <div dangerouslySetInnerHTML={{ __html: formattedHtml }} />
+            ) : (
+              <span className="text-gray-400">{placeholder}</span>
+            )}
+          </div>
+        )}
 
-        {/* Transparent textarea (in front, for user input) */}
+        {/* Textarea (선택 중일 때는 텍스트 표시, 아닐 때는 투명) */}
         <textarea
           ref={textareaRef}
           id={id}
@@ -315,17 +332,20 @@ export function RichTextEditor({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onScroll={handleScroll}
-          placeholder=""
+          onSelect={handleSelect}
+          onBlur={handleBlur}
+          placeholder={hasSelection ? '' : ''}
           rows={rows}
           className={clsx(
             'relative w-full px-3 py-2',
             'text-sm leading-relaxed',
             'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
             'resize-none',
-            // Make text transparent but keep caret visible
-            'text-transparent caret-gray-900',
-            'bg-transparent',
-            'font-[system-ui]'
+            'font-[system-ui]',
+            // 선택 중일 때는 텍스트 보이게, 아닐 때는 투명
+            hasSelection
+              ? 'text-gray-900 bg-white'
+              : 'text-transparent caret-gray-900 bg-transparent'
           )}
           style={{ height: textareaHeight }}
         />
