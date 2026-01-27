@@ -7,6 +7,8 @@
  * PUT /api/events/:eventId - 이벤트 수정
  * DELETE /api/events/:eventId - 이벤트 삭제
  * POST /api/events/:eventId/announce - Slack 공지
+ * POST /api/events/:eventId/bulk-dm - 단체 DM 발송
+ * GET /api/events/:eventId/bulk-dm/:jobId - 단체 DM 작업 조회
  */
 
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
@@ -19,10 +21,14 @@ import {
   getEventRSVPs,
   saveLog,
   listMembers,
+  saveBulkDMJob,
+  getBulkDMJob as getBulkDMJobFromDB,
 } from '../../services/db.service.js';
 import { buildEventAnnouncementBlocks } from '../../services/slack.service.js';
 import { getSecrets } from '../../services/secrets.service.js';
-import type { Event, EventAnnouncement, EventResponseOption, RSVPWithMember, RSVPListResponse } from '@baepdoongi/shared';
+import type { Event, EventAnnouncement, EventResponseOption, RSVPWithMember, RSVPListResponse, BulkDMRequest, BulkDMJob } from '@baepdoongi/shared';
+import { DM_TEMPLATES } from '@baepdoongi/shared';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { randomUUID } from 'crypto';
 
 // DynamoDB에서 삭제
@@ -32,6 +38,8 @@ import { DynamoDBDocumentClient, DeleteCommand, QueryCommand } from '@aws-sdk/li
 const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'baepdoongi-table';
+const sqsClient = new SQSClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
+const DM_QUEUE_URL = process.env.DM_QUEUE_URL || '';
 
 let slackClient: WebClient | null = null;
 
@@ -69,6 +77,18 @@ export async function handleEvents(
   const rsvpsMatch = subPath.match(/^\/([^/]+)\/rsvps$/);
   if (rsvpsMatch?.[1] && method === 'GET') {
     return handleGetEventRSVPs(rsvpsMatch[1]);
+  }
+
+  // /api/events/:eventId/bulk-dm (POST)
+  const bulkDMMatch = subPath.match(/^\/([^/]+)\/bulk-dm$/);
+  if (bulkDMMatch?.[1] && method === 'POST') {
+    return handleSendBulkDM(event, bulkDMMatch[1]);
+  }
+
+  // /api/events/:eventId/bulk-dm/:jobId (GET)
+  const bulkDMJobMatch = subPath.match(/^\/([^/]+)\/bulk-dm\/([^/]+)$/);
+  if (bulkDMJobMatch?.[1] && bulkDMJobMatch?.[2] && method === 'GET') {
+    return handleGetBulkDMJob(bulkDMJobMatch[2]);
   }
 
   // /api/events/:eventId
@@ -432,5 +452,113 @@ async function handleGetEventRSVPs(eventId: string): Promise<APIGatewayProxyResu
   } catch (error) {
     console.error('[Events API] GetRSVPs Error:', error);
     return createErrorResponse(500, 'Failed to fetch RSVPs');
+  }
+}
+
+async function handleSendBulkDM(
+  apiEvent: APIGatewayProxyEvent,
+  eventId: string
+): Promise<APIGatewayProxyResult> {
+  try {
+    const body = JSON.parse(apiEvent.body || '{}') as BulkDMRequest;
+    const { userIds, templateId, customMessage } = body;
+
+    if (!userIds || userIds.length === 0) {
+      return createErrorResponse(400, 'userIds가 필요합니다');
+    }
+
+    if (!templateId) {
+      return createErrorResponse(400, 'templateId가 필요합니다');
+    }
+
+    // 템플릿 검증
+    const template = DM_TEMPLATES.find((t) => t.templateId === templateId);
+    if (!template) {
+      return createErrorResponse(400, '유효하지 않은 templateId입니다');
+    }
+
+    // 이벤트 조회
+    const eventItem = await getEvent(eventId);
+    if (!eventItem) {
+      return createErrorResponse(404, '이벤트를 찾을 수 없습니다');
+    }
+
+    // DM 큐 URL 확인
+    if (!DM_QUEUE_URL) {
+      return createErrorResponse(500, 'DM 큐가 설정되지 않았습니다');
+    }
+
+    // 작업 생성
+    const jobId = `dm_${randomUUID()}`;
+    const now = new Date().toISOString();
+
+    const job: BulkDMJob = {
+      jobId,
+      eventId,
+      templateId,
+      userIds,
+      totalCount: userIds.length,
+      sentCount: 0,
+      failedCount: 0,
+      status: 'queued',
+      createdAt: now,
+      ...(customMessage && { customMessage }),
+    };
+
+    await saveBulkDMJob(job);
+
+    // SQS에 작업 전송
+    await sqsClient.send(
+      new SendMessageCommand({
+        QueueUrl: DM_QUEUE_URL,
+        MessageBody: JSON.stringify({
+          jobId,
+          eventId,
+          userIds,
+          templateId,
+          customMessage,
+          eventTitle: eventItem.title,
+          eventDatetime: eventItem.datetime,
+          eventLocation: eventItem.location,
+        }),
+      })
+    );
+
+    // 로그 기록
+    await saveLog({
+      logId: `log_${randomUUID()}`,
+      type: 'BULK_DM_START',
+      userId: 'dashboard',
+      eventId,
+      details: {
+        jobId,
+        templateId,
+        targetCount: userIds.length,
+      },
+    });
+
+    return createResponse(200, {
+      jobId,
+      totalCount: userIds.length,
+      status: 'queued',
+    });
+  } catch (error) {
+    console.error('[Events API] SendBulkDM Error:', error);
+    return createErrorResponse(500, 'Failed to send bulk DM');
+  }
+}
+
+async function handleGetBulkDMJob(jobId: string): Promise<APIGatewayProxyResult> {
+  try {
+    const job = await getBulkDMJobFromDB(jobId);
+
+    if (!job) {
+      return createErrorResponse(404, '작업을 찾을 수 없습니다');
+    }
+
+    return createResponse(200, job);
+  } catch (error) {
+    console.error('[Events API] GetBulkDMJob Error:', error);
+    return createErrorResponse(500, 'Failed to fetch bulk DM job');
   }
 }

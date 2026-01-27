@@ -27,6 +27,7 @@ import type {
   Match,
   SubmissionStatus,
   DepositStatus,
+  BulkDMJob,
 } from '@baepdoongi/shared';
 
 // DynamoDB 클라이언트 설정
@@ -723,6 +724,131 @@ export async function deleteDeposit(depositId: string): Promise<void> {
         PK: `DEP#${depositId}`,
         SK: 'DETAIL',
       },
+    })
+  );
+}
+
+// ============================================
+// BulkDMJob (단체 DM 작업) 관련 함수
+// ============================================
+
+/**
+ * 단체 DM 작업을 저장합니다 (1일 TTL 적용).
+ */
+export async function saveBulkDMJob(job: BulkDMJob): Promise<void> {
+  const now = new Date();
+  const ttl = Math.floor(now.getTime() / 1000) + 24 * 60 * 60; // 1일 후
+
+  const item = {
+    PK: `DM_JOB#${job.jobId}`,
+    SK: 'DETAIL',
+    GSI1PK: `EVENT#${job.eventId}`,
+    GSI1SK: `DM_JOB#${job.createdAt}`,
+    ...job,
+    ttl,
+  };
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: item,
+    })
+  );
+}
+
+/**
+ * 단체 DM 작업을 조회합니다.
+ */
+export async function getBulkDMJob(jobId: string): Promise<BulkDMJob | null> {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `DM_JOB#${jobId}`,
+        SK: 'DETAIL',
+      },
+    })
+  );
+
+  return (result.Item as BulkDMJob) || null;
+}
+
+/**
+ * 단체 DM 작업 진행 상황을 업데이트합니다.
+ */
+export async function updateBulkDMJobProgress(
+  jobId: string,
+  sentCount: number,
+  failedCount: number,
+  errors?: Array<{ userId: string; error: string }>
+): Promise<void> {
+  const updateExpression = 'SET sentCount = :sent, failedCount = :failed, updatedAt = :now' +
+    (errors ? ', errors = :errors' : '');
+
+  const expressionAttributeValues: Record<string, unknown> = {
+    ':sent': sentCount,
+    ':failed': failedCount,
+    ':now': new Date().toISOString(),
+  };
+
+  if (errors) {
+    expressionAttributeValues[':errors'] = errors;
+  }
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `DM_JOB#${jobId}`,
+        SK: 'DETAIL',
+      },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeValues: expressionAttributeValues,
+    })
+  );
+}
+
+/**
+ * 단체 DM 작업 상태를 완료/실패로 업데이트합니다.
+ */
+export async function completeBulkDMJob(
+  jobId: string,
+  status: 'completed' | 'failed',
+  sentCount: number,
+  failedCount: number,
+  errors?: Array<{ userId: string; error: string }>
+): Promise<void> {
+  const now = new Date().toISOString();
+
+  const updateExpression = 'SET #status = :status, sentCount = :sent, failedCount = :failed, completedAt = :completedAt, updatedAt = :now' +
+    (errors && errors.length > 0 ? ', errors = :errors' : '');
+
+  const expressionAttributeNames = {
+    '#status': 'status',
+  };
+
+  const expressionAttributeValues: Record<string, unknown> = {
+    ':status': status,
+    ':sent': sentCount,
+    ':failed': failedCount,
+    ':completedAt': now,
+    ':now': now,
+  };
+
+  if (errors && errors.length > 0) {
+    expressionAttributeValues[':errors'] = errors;
+  }
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `DM_JOB#${jobId}`,
+        SK: 'DETAIL',
+      },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: expressionAttributeValues,
     })
   );
 }
