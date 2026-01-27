@@ -222,6 +222,23 @@ export async function getEventRSVPs(eventId: string): Promise<RSVP[]> {
   return (result.Items as RSVP[]) || [];
 }
 
+/**
+ * 특정 회원의 이벤트 RSVP를 조회합니다.
+ */
+export async function getRSVP(eventId: string, memberId: string): Promise<RSVP | null> {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `EVENT#${eventId}`,
+        SK: `RSVP#${memberId}`,
+      },
+    })
+  );
+
+  return (result.Item as RSVP) || null;
+}
+
 // ============================================
 // Log 관련 함수
 // ============================================

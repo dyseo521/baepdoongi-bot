@@ -14,10 +14,10 @@ import type {
   ButtonAction,
   ViewSubmitAction,
 } from '@slack/bolt';
-import { saveRSVP, getEvent, getEventRSVPs, saveLog } from '../../services/db.service.js';
+import { saveRSVP, getEvent, getEventRSVPs, getRSVP, saveLog } from '../../services/db.service.js';
 import { buildEventAnnouncementBlocks } from '../../services/slack.service.js';
 import { generateId } from '../../utils/id.js';
-import type { RSVPStatus, EventResponseOption } from '@baepdoongi/shared';
+import type { RSVPStatus, EventResponseOption, RSVP, Event } from '@baepdoongi/shared';
 
 /**
  * optionId를 RSVPStatus로 매핑합니다.
@@ -35,6 +35,52 @@ function mapOptionIdToStatus(optionId: string): RSVPStatus {
     default:
       return 'maybe';
   }
+}
+
+/**
+ * 다중 선택에서 RSVPStatus 결정
+ * - 참석 계열(attend, online)이 포함되면 attending
+ * - 불참(absent)만 있으면 absent
+ * - 그 외(늦참, maybe 등)면 maybe
+ */
+function mapMultipleOptionsToStatus(optionIds: string[]): RSVPStatus {
+  if (optionIds.includes('attend') || optionIds.includes('online')) {
+    return 'attending';
+  }
+  if (optionIds.includes('absent') && optionIds.length === 1) {
+    return 'absent';
+  }
+  return 'maybe';
+}
+
+/**
+ * 응답 현황 집계 (중복 선택 지원)
+ */
+function countResponses(rsvps: RSVP[]): Record<string, number> {
+  const responseCounts: Record<string, number> = {};
+
+  for (const rsvp of rsvps) {
+    // 중복 선택 모드인 경우 responseOptionIds 배열 사용
+    if (rsvp.responseOptionIds && rsvp.responseOptionIds.length > 0) {
+      for (const id of rsvp.responseOptionIds) {
+        responseCounts[id] = (responseCounts[id] || 0) + 1;
+      }
+    } else {
+      // 단일 선택 모드
+      const optionId = rsvp.responseOptionId || (rsvp.status === 'attending' ? 'attend' : 'absent');
+      responseCounts[optionId] = (responseCounts[optionId] || 0) + 1;
+    }
+  }
+
+  return responseCounts;
+}
+
+interface ProcessRSVPResult {
+  success: boolean;
+  event?: Event;
+  responseOption?: EventResponseOption;
+  isToggleOff?: boolean;
+  currentSelections?: string[];
 }
 
 /**
@@ -56,7 +102,7 @@ async function processRSVP({
   channelId?: string;
   messageTs?: string;
   client: AllMiddlewareArgs['client'];
-}): Promise<{ success: boolean; event?: NonNullable<Awaited<ReturnType<typeof getEvent>>>; responseOption?: EventResponseOption }> {
+}): Promise<ProcessRSVPResult> {
   // 이벤트 정보 조회
   const event = await getEvent(eventId);
   if (!event) {
@@ -79,37 +125,107 @@ async function processRSVP({
     return { success: false };
   }
 
-  // RSVPStatus로 변환
-  const status = mapOptionIdToStatus(optionId);
+  const allowMultipleSelection = event.announcement.allowMultipleSelection || false;
+  let isToggleOff = false;
+  let currentSelections: string[] = [];
 
-  // RSVP 저장
-  await saveRSVP({
-    eventId,
-    memberId: userId,
-    status,
-    respondedAt: new Date().toISOString(),
-    responseOptionId: optionId,
-    ...(inputValue && { inputValue }),
-  });
+  if (allowMultipleSelection) {
+    // 중복 선택 모드: 토글 로직
+    const existingRSVP = await getRSVP(eventId, userId);
+
+    if (existingRSVP) {
+      // 기존 선택 목록 가져오기 (responseOptionIds 우선, 없으면 responseOptionId 사용)
+      const currentIds = existingRSVP.responseOptionIds ||
+        (existingRSVP.responseOptionId ? [existingRSVP.responseOptionId] : []);
+
+      if (currentIds.includes(optionId)) {
+        // 이미 선택된 옵션: 제거 (토글 OFF)
+        const newIds = currentIds.filter(id => id !== optionId);
+        isToggleOff = true;
+        currentSelections = newIds;
+
+        if (newIds.length === 0) {
+          // 모든 선택이 해제되면 기본 상태로 저장 (빈 배열)
+          await saveRSVP({
+            eventId,
+            memberId: userId,
+            status: 'maybe',
+            respondedAt: new Date().toISOString(),
+            responseOptionIds: [],
+          });
+        } else {
+          // 선택 목록 업데이트
+          const status = mapMultipleOptionsToStatus(newIds);
+          await saveRSVP({
+            eventId,
+            memberId: userId,
+            status,
+            respondedAt: new Date().toISOString(),
+            responseOptionIds: newIds,
+          });
+        }
+      } else {
+        // 새로운 옵션 추가 (토글 ON)
+        const newIds = [...currentIds, optionId];
+        currentSelections = newIds;
+        const status = mapMultipleOptionsToStatus(newIds);
+
+        await saveRSVP({
+          eventId,
+          memberId: userId,
+          status,
+          respondedAt: new Date().toISOString(),
+          responseOptionIds: newIds,
+          ...(inputValue && { inputValue }),
+        });
+      }
+    } else {
+      // 첫 응답
+      currentSelections = [optionId];
+      const status = mapOptionIdToStatus(optionId);
+
+      await saveRSVP({
+        eventId,
+        memberId: userId,
+        status,
+        respondedAt: new Date().toISOString(),
+        responseOptionIds: [optionId],
+        ...(inputValue && { inputValue }),
+      });
+    }
+  } else {
+    // 단일 선택 모드: 기존 로직 유지
+    const status = mapOptionIdToStatus(optionId);
+
+    await saveRSVP({
+      eventId,
+      memberId: userId,
+      status,
+      respondedAt: new Date().toISOString(),
+      responseOptionId: optionId,
+      ...(inputValue && { inputValue }),
+    });
+  }
 
   // 현재 응답 현황 집계
   const rsvps = await getEventRSVPs(eventId);
-  const responseCounts: Record<string, number> = {};
-
-  for (const rsvp of rsvps) {
-    const rsvpOptionId = rsvp.responseOptionId || (rsvp.status === 'attending' ? 'attend' : 'absent');
-    responseCounts[rsvpOptionId] = (responseCounts[rsvpOptionId] || 0) + 1;
-  }
+  const responseCounts = countResponses(rsvps);
 
   // 원본 메시지 업데이트
   const updateChannelId = channelId || event.announcement.channelId;
   const updateMessageTs = messageTs || event.announcement.messageTs;
 
   if (updateChannelId && updateMessageTs) {
+    // 중복 선택 모드일 때 현재 사용자의 선택 정보도 전달
+    const userSelections = allowMultipleSelection ? currentSelections : undefined;
+
     const updatedBlocks = buildEventAnnouncementBlocks(
       event,
       event.announcement.responseOptions,
-      responseCounts
+      responseCounts,
+      allowMultipleSelection,
+      userId,
+      userSelections
     );
 
     await client.chat.update({
@@ -130,14 +246,17 @@ async function processRSVP({
       eventTitle: event.title,
       optionId,
       optionLabel: responseOption.label,
-      status,
+      status: allowMultipleSelection ? mapMultipleOptionsToStatus(currentSelections) : mapOptionIdToStatus(optionId),
+      isToggleOff,
+      allowMultipleSelection,
+      currentSelections: allowMultipleSelection ? currentSelections : undefined,
       ...(inputValue && { inputValue }),
     },
   });
 
-  console.log(`이벤트 응답: ${userId} -> ${eventId} (${optionId}: ${responseOption.label})${inputValue ? ` [입력: ${inputValue}]` : ''}`);
+  console.log(`이벤트 응답: ${userId} -> ${eventId} (${optionId}: ${responseOption.label})${isToggleOff ? ' [해제]' : ''}${inputValue ? ` [입력: ${inputValue}]` : ''}`);
 
-  return { success: true, event, responseOption };
+  return { success: true, event, responseOption, isToggleOff, currentSelections };
 }
 
 export async function handleEventResponse({
@@ -247,11 +366,30 @@ export async function handleEventResponse({
     if (result.success && result.event && result.responseOption && channelId) {
       const optionEmoji = result.responseOption.emoji || '';
       const optionLabel = result.responseOption.label;
+      const allowMultiple = result.event.announcement?.allowMultipleSelection || false;
+
+      let message: string;
+      if (allowMultiple) {
+        if (result.isToggleOff) {
+          message = `${optionEmoji} "${result.event.title}" 이벤트에서 "${optionLabel}" 선택을 해제했습니다.`;
+        } else if (result.currentSelections && result.currentSelections.length > 1) {
+          const selectedLabels = result.currentSelections
+            .map(id => result.event!.announcement!.responseOptions.find(opt => opt.optionId === id))
+            .filter(Boolean)
+            .map(opt => `${opt!.emoji || ''} ${opt!.label}`)
+            .join(', ');
+          message = `"${result.event.title}" 이벤트에 ${selectedLabels}(으)로 응답 중입니다.`;
+        } else {
+          message = `${optionEmoji} "${result.event.title}" 이벤트에 "${optionLabel}"(으)로 응답했습니다.`;
+        }
+      } else {
+        message = `${optionEmoji} "${result.event.title}" 이벤트에 "${optionLabel}"(으)로 응답했습니다.`;
+      }
 
       await client.chat.postEphemeral({
         channel: channelId,
         user: userId,
-        text: `${optionEmoji} "${result.event.title}" 이벤트에 "${optionLabel}"(으)로 응답했습니다.`,
+        text: message,
       });
     }
   } catch (error) {
