@@ -45,6 +45,9 @@ export interface EventAnnouncement {
 
   /** 공지 생성자 */
   announcedBy: string;
+
+  /** 중복 선택 허용 여부 (기본: false) */
+  allowMultipleSelection?: boolean;
 }
 
 /** 이벤트 정보 */
@@ -58,8 +61,26 @@ export interface Event {
   /** 이벤트 설명 */
   description: string;
 
-  /** 이벤트 일시 (ISO 8601) */
+  /** 이벤트 일시 (ISO 8601) - 하위 호환성 유지용 */
   datetime: string;
+
+  /** 시작 날짜 (YYYY-MM-DD) */
+  startDate?: string;
+
+  /** 종료 날짜 (YYYY-MM-DD) - 기간 선택 시 사용 */
+  endDate?: string;
+
+  /** 시작 시간 (HH:mm) - 선택사항 */
+  startTime?: string;
+
+  /** 종료 시간 (HH:mm) - 선택사항 */
+  endTime?: string;
+
+  /** 여러 날짜 여부 */
+  isMultiDay?: boolean;
+
+  /** 시간 지정 여부 */
+  hasTime?: boolean;
 
   /** 이벤트 장소 */
   location?: string;
@@ -151,8 +172,11 @@ export interface RSVP {
   /** 추가 메모 */
   note?: string;
 
-  /** 커스텀 응답 옵션 ID (Slack 공지 응답용) */
+  /** 커스텀 응답 옵션 ID (Slack 공지 응답용, 단일 선택 시) */
   responseOptionId?: string;
+
+  /** 커스텀 응답 옵션 ID 목록 (중복 선택 시) */
+  responseOptionIds?: string[];
 
   /** 사용자 입력 값 (requiresInput이 true인 옵션 응답 시) */
   inputValue?: string;
@@ -187,7 +211,7 @@ export type CreateEventInput = Pick<
   Event,
   'title' | 'description' | 'datetime' | 'location' | 'type' | 'createdBy'
 > &
-  Partial<Pick<Event, 'rsvpDeadline' | 'maxAttendees' | 'surveyFields'>>;
+  Partial<Pick<Event, 'rsvpDeadline' | 'maxAttendees' | 'surveyFields' | 'startDate' | 'endDate' | 'startTime' | 'endTime' | 'isMultiDay' | 'hasTime'>>;
 
 /** 이벤트 업데이트 입력 */
 export type UpdateEventInput = Partial<
@@ -204,6 +228,8 @@ export interface SlackChannel {
 export interface AnnounceEventRequest {
   channelId: string;
   responseOptions: EventResponseOption[];
+  /** 중복 선택 허용 여부 */
+  allowMultipleSelection?: boolean;
 }
 
 /** 이벤트 공지 응답 */
