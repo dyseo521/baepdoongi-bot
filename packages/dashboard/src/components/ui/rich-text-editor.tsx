@@ -294,7 +294,8 @@ export function RichTextEditor({
             'text-sm text-gray-900 leading-relaxed',
             'whitespace-pre-wrap break-words',
             'pointer-events-none overflow-auto',
-            'bg-white'
+            'bg-white',
+            'font-[system-ui]'
           )}
           style={{ height: textareaHeight }}
           aria-hidden="true"
@@ -323,7 +324,8 @@ export function RichTextEditor({
             'resize-none',
             // Make text transparent but keep caret visible
             'text-transparent caret-gray-900',
-            'bg-transparent'
+            'bg-transparent',
+            'font-[system-ui]'
           )}
           style={{ height: textareaHeight }}
         />
