@@ -4,6 +4,7 @@ import { clsx } from 'clsx';
 import { Smile } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
+import { searchEmojis, containsKorean } from '@/lib/emoji-ko';
 
 interface EmojiPickerButtonProps {
   value?: string | undefined;
@@ -21,16 +22,42 @@ export function EmojiPickerButton({
   showLabel = true,
 }: EmojiPickerButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [koreanQuery, setKoreanQuery] = useState('');
+  const [quickEmojis, setQuickEmojis] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const koreanInputRef = useRef<HTMLInputElement>(null);
 
   const handleEmojiClick = useCallback(
     (emojiData: EmojiClickData) => {
       onSelect(emojiData.emoji);
       setIsOpen(false);
+      setKoreanQuery('');
+      setQuickEmojis([]);
     },
     [onSelect]
   );
+
+  const handleQuickSelect = useCallback(
+    (emoji: string) => {
+      onSelect(emoji);
+      setIsOpen(false);
+      setKoreanQuery('');
+      setQuickEmojis([]);
+    },
+    [onSelect]
+  );
+
+  const handleKoreanSearch = useCallback((value: string) => {
+    setKoreanQuery(value);
+
+    if (containsKorean(value) && value.length >= 1) {
+      const results = searchEmojis(value);
+      setQuickEmojis(results.slice(0, 12)); // 최대 12개
+    } else {
+      setQuickEmojis([]);
+    }
+  }, []);
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
     if (
@@ -38,12 +65,16 @@ export function EmojiPickerButton({
       !containerRef.current.contains(event.target as Node)
     ) {
       setIsOpen(false);
+      setKoreanQuery('');
+      setQuickEmojis([]);
     }
   }, []);
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       setIsOpen(false);
+      setKoreanQuery('');
+      setQuickEmojis([]);
     }
   }, []);
 
@@ -51,6 +82,10 @@ export function EmojiPickerButton({
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
+      // 피커가 열리면 한국어 검색창에 포커스
+      setTimeout(() => {
+        koreanInputRef.current?.focus();
+      }, 100);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
@@ -64,7 +99,7 @@ export function EmojiPickerButton({
       const containerRect = containerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
-      const pickerHeight = 400;
+      const pickerHeight = 480; // 한국어 검색창 높이 추가
       const pickerWidth = 350;
 
       // Adjust vertical position
@@ -118,15 +153,48 @@ export function EmojiPickerButton({
       {isOpen && (
         <div
           ref={pickerRef}
-          className="absolute z-50"
+          className="absolute z-50 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden"
           role="dialog"
           aria-label="이모지 피커"
         >
+          {/* 한국어 빠른 검색 */}
+          <div className="px-3 py-2 border-b border-gray-200">
+            <input
+              ref={koreanInputRef}
+              type="text"
+              value={koreanQuery}
+              onChange={(e) => handleKoreanSearch(e.target.value)}
+              placeholder="한국어로 검색 (예: 하트, 참석, 웃음)"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            {quickEmojis.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {quickEmojis.map((emoji, index) => (
+                  <button
+                    key={`${emoji}-${index}`}
+                    type="button"
+                    onClick={() => handleQuickSelect(emoji)}
+                    className="p-1.5 text-xl hover:bg-gray-100 rounded transition-colors"
+                    aria-label={`이모지 ${emoji} 선택`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+            {koreanQuery && containsKorean(koreanQuery) && quickEmojis.length === 0 && (
+              <p className="text-xs text-gray-500 mt-2">
+                검색 결과가 없습니다. 영어로 검색해보세요.
+              </p>
+            )}
+          </div>
+
+          {/* 기존 이모지 피커 */}
           <EmojiPicker
             onEmojiClick={handleEmojiClick}
             theme={Theme.LIGHT}
             lazyLoadEmojis
-            searchPlaceholder="이모지 검색..."
+            searchPlaceholder="영어로 검색..."
             width={350}
             height={400}
           />
