@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Hash, Eye, Loader2 } from 'lucide-react';
+import { Send, Hash, Eye, Loader2, Edit3, Info } from 'lucide-react';
 import { Button, Modal } from '@/components/ui';
 import { ResponseOptionsEditor, RESPONSE_TEMPLATES } from './response-options-editor';
 import type { Event, EventResponseOption, SlackChannel } from '@baepdoongi/shared';
@@ -11,9 +11,20 @@ interface AnnounceModalProps {
   onClose: () => void;
   event: Event | null;
   onConfirm: (channelId: string, responseOptions: EventResponseOption[]) => Promise<void>;
+  /** 수정 모드 (기존 공지 수정) */
+  mode?: 'create' | 'edit';
+  /** 수정 완료 콜백 (edit 모드 전용) */
+  onEdit?: () => Promise<void>;
 }
 
-export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceModalProps) {
+export function AnnounceModal({
+  isOpen,
+  onClose,
+  event,
+  onConfirm,
+  mode = 'create',
+  onEdit,
+}: AnnounceModalProps) {
   const [channels, setChannels] = useState<SlackChannel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string>('');
   const [responseOptions, setResponseOptions] = useState<EventResponseOption[]>(
@@ -22,6 +33,8 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingChannels, setIsLoadingChannels] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isEditMode = mode === 'edit';
 
   // 채널 목록 로드
   useEffect(() => {
@@ -60,16 +73,43 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
 
   // 모달 열릴 때 초기화
   useEffect(() => {
-    if (isOpen) {
-      setSelectedChannelId('');
-      setResponseOptions([...RESPONSE_TEMPLATES.simple]);
+    if (isOpen && event) {
+      if (isEditMode && event.announcement) {
+        // 수정 모드: 기존 설정 불러오기
+        setSelectedChannelId(event.announcement.channelId);
+        setResponseOptions([...event.announcement.responseOptions]);
+      } else {
+        // 생성 모드: 초기화
+        setSelectedChannelId('');
+        setResponseOptions([...RESPONSE_TEMPLATES.simple]);
+      }
       setError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, event, isEditMode]);
 
   if (!event) return null;
 
   const handleConfirm = async () => {
+    if (isEditMode) {
+      // 수정 모드: 이벤트 업데이트만 (Slack 메시지 자동 업데이트됨)
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        if (onEdit) {
+          await onEdit();
+        }
+        onClose();
+      } catch (err) {
+        setError('수정에 실패했습니다');
+        console.error('수정 실패:', err);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // 생성 모드: 새 공지
     if (!selectedChannelId) {
       setError('채널을 선택해주세요');
       return;
@@ -109,8 +149,14 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Slack 공지 보내기"
-      titleIcon={<Send className="w-5 h-5 text-primary-600" />}
+      title={isEditMode ? 'Slack 공지 수정' : 'Slack 공지 보내기'}
+      titleIcon={
+        isEditMode ? (
+          <Edit3 className="w-5 h-5 text-primary-600" />
+        ) : (
+          <Send className="w-5 h-5 text-primary-600" />
+        )
+      }
       maxWidth="2xl"
       maxHeight="90vh"
       stickyHeader
@@ -118,7 +164,11 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
       footer={
         <>
           <div className="flex-1 text-sm text-gray-500">
-            {selectedChannel && <>#{selectedChannel.name}에 공지됩니다</>}
+            {isEditMode ? (
+              <>Slack 메시지가 함께 업데이트됩니다</>
+            ) : (
+              selectedChannel && <>#{selectedChannel.name}에 공지됩니다</>
+            )}
           </div>
           <Button variant="secondary" onClick={onClose}>
             취소
@@ -126,15 +176,28 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
           <Button
             onClick={handleConfirm}
             isLoading={isLoading}
-            disabled={!selectedChannelId || isLoadingChannels}
-            leftIcon={<Send className="w-4 h-4" />}
+            disabled={!isEditMode && (!selectedChannelId || isLoadingChannels)}
+            leftIcon={
+              isEditMode ? <Edit3 className="w-4 h-4" /> : <Send className="w-4 h-4" />
+            }
           >
-            공지하기
+            {isEditMode ? '수정하기' : '공지하기'}
           </Button>
         </>
       }
     >
       <div className="p-6 space-y-6">
+        {/* 수정 모드 안내 */}
+        {isEditMode && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-start gap-2">
+            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div>
+              이벤트 정보를 수정하면 Slack 공지 메시지도 함께 업데이트됩니다.
+              채널과 응답 옵션은 변경할 수 없습니다.
+            </div>
+          </div>
+        )}
+
         {/* 에러 메시지 */}
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -148,7 +211,11 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
             <Hash className="w-4 h-4 inline mr-1" aria-hidden="true" />
             공지 채널
           </label>
-          {isLoadingChannels ? (
+          {isEditMode && event.announcement ? (
+            <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600">
+              # {event.announcement.channelName}
+            </div>
+          ) : isLoadingChannels ? (
             <div className="flex items-center gap-2 text-gray-500">
               <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
               <span>채널 목록 로딩 중...</span>
@@ -174,10 +241,14 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             응답 옵션 설정
+            {isEditMode && (
+              <span className="ml-2 text-xs text-gray-500 font-normal">(읽기 전용)</span>
+            )}
           </label>
           <ResponseOptionsEditor
             options={responseOptions}
             onChange={setResponseOptions}
+            disabled={isEditMode}
           />
         </div>
 
@@ -202,7 +273,7 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
                 </div>
               </div>
               {event.description && (
-                <div className="text-sm text-gray-700">{event.description}</div>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap">{event.description}</div>
               )}
               <hr className="border-gray-300" />
               <div className="text-xs text-gray-500">
@@ -220,6 +291,11 @@ export function AnnounceModal({ isOpen, onClose, event, onConfirm }: AnnounceMod
                       className="px-3 py-1 bg-white border border-gray-300 rounded text-sm"
                     >
                       {opt.emoji || ''} {opt.label}
+                      {opt.requiresInput && (
+                        <span className="ml-1 text-xs text-gray-400" title="텍스트 입력 필요">
+                          ✏️
+                        </span>
+                      )}
                     </span>
                   ))}
               </div>
