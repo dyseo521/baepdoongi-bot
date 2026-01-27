@@ -11,7 +11,6 @@ import {
   MessageSquare,
   FileText,
   CreditCard,
-  Dog,
   ChevronDown,
   LogOut,
   type LucideIcon,
@@ -83,11 +82,7 @@ export function Sidebar() {
     <aside className="w-64 bg-slate-800 text-white flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-slate-700">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Dog className="w-6 h-6" />
-          뱁둥이
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">IGRUS 관리자 대시보드</p>
+        <h1 className="text-xl font-bold">뱁둥이</h1>
       </div>
 
       {/* Navigation */}

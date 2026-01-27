@@ -49,7 +49,7 @@ export function ChartCard({
           ))}
         </div>
       </div>
-      <div className="h-64">
+      <div className="h-64 min-w-0">
         {isLoading ? (
           <div className="w-full h-full flex items-center justify-center">
             <div className="animate-pulse flex flex-col items-center gap-2">

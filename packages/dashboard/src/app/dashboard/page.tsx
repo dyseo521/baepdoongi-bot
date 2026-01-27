@@ -83,10 +83,7 @@ function DashboardContent() {
 
   return (
     <div>
-      <PageHeader
-        title="대시보드"
-        description="IGRUS 동아리 현황을 한눈에 확인하세요"
-      />
+      <PageHeader title="대시보드" />
 
       <div className="p-8 space-y-8">
         {/* 통계 카드 그리드 */}
@@ -124,7 +121,7 @@ function DashboardContent() {
             {membersTrends && (
               <TrendsChart
                 data={membersTrends.dailyMembers}
-                color="#4f46e5"
+                color="#3b82f6"
                 gradientId="membersGradient"
               />
             )}
@@ -140,7 +137,7 @@ function DashboardContent() {
             {ragTrends && (
               <TrendsChart
                 data={ragTrends.dailyRagQueries}
-                color="#10b981"
+                color="#0ea5e9"
                 gradientId="ragGradient"
               />
             )}
