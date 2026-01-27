@@ -19,35 +19,50 @@ export function toMrkdwn(json: JSONContent): string {
 function paragraphToMrkdwn(node: JSONContent): string {
   if (!node.content) return '';
 
-  return node.content
-    .map((child) => {
-      if (child.type === 'text') {
-        let text = child.text ?? '';
-        const marks = child.marks ?? [];
+  const results: string[] = [];
+  let prevHadMarks = false;
 
-        // 마크 순서: code → strike → italic → bold (안쪽에서 바깥쪽으로)
-        for (const mark of marks) {
-          switch (mark.type) {
-            case 'code':
-              text = `\`${text}\``;
-              break;
-            case 'strike':
-              text = `~${text}~`;
-              break;
-            case 'italic':
-              text = `_${text}_`;
-              break;
-            case 'bold':
-              text = `*${text}*`;
-              break;
-          }
+  for (const child of node.content) {
+    if (child.type === 'text') {
+      let text = child.text ?? '';
+      const marks = child.marks ?? [];
+      const hasMarks = marks.length > 0;
+
+      // 이전 텍스트와 현재 텍스트 모두 마크가 있으면 공백 추가
+      // (연속된 *text1**text2* 패턴 방지)
+      if (prevHadMarks && hasMarks && results.length > 0) {
+        const lastResult = results[results.length - 1];
+        // 마지막 문자가 마크 종료 문자(*, _, ~, `)이고
+        // 현재 텍스트가 마크로 시작하면 공백 필요
+        if (lastResult && /[*_~`]$/.test(lastResult)) {
+          results.push(' ');
         }
-
-        return text;
       }
-      return '';
-    })
-    .join('');
+
+      // 마크 순서: code → strike → italic → bold (안쪽에서 바깥쪽으로)
+      for (const mark of marks) {
+        switch (mark.type) {
+          case 'code':
+            text = `\`${text}\``;
+            break;
+          case 'strike':
+            text = `~${text}~`;
+            break;
+          case 'italic':
+            text = `_${text}_`;
+            break;
+          case 'bold':
+            text = `*${text}*`;
+            break;
+        }
+      }
+
+      results.push(text);
+      prevHadMarks = hasMarks;
+    }
+  }
+
+  return results.join('');
 }
 
 /**
