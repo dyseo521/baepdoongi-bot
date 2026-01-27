@@ -8,3 +8,4 @@ export { BotStack } from './bot-stack.js';
 export { BedrockStack } from './bedrock-stack.js';
 export { DashboardStack } from './dashboard-stack.js';
 export { SchedulerStack } from './scheduler-stack.js';
+export { CiCdStack } from './cicd-stack.js';

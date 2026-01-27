@@ -12,6 +12,7 @@ import { BotStack } from './lib/stacks/bot-stack.js';
 import { BedrockStack } from './lib/stacks/bedrock-stack.js';
 import { DashboardStack } from './lib/stacks/dashboard-stack.js';
 import { SchedulerStack } from './lib/stacks/scheduler-stack.js';
+import { CiCdStack } from './lib/stacks/cicd-stack.js';
 
 const app = new cdk.App();
 
@@ -81,6 +82,16 @@ const schedulerStack = new SchedulerStack(app, 'BaepdoongiSchedulerStack', {
   tags,
   description: 'EventBridge 스케줄러 (이름 검사 등)',
   nameCheckerLambda: botStack.nameCheckerLambda,
+});
+
+// 7. CI/CD 스택 (GitHub Actions OIDC)
+new CiCdStack(app, 'BaepdoongiCiCdStack', {
+  env,
+  tags,
+  description: 'GitHub Actions OIDC 인증 및 배포 권한',
+  githubRepo: 'dyseo521/baepdoongi-bot',
+  dashboardBucketName: dashboardStack.dashboardBucket.bucketName,
+  cloudFrontDistributionId: dashboardStack.distribution.distributionId,
 });
 
 // 스택 의존성 설정

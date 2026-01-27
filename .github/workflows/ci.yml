@@ -1,6 +1,6 @@
-# CI 파이프라인
-# PR 및 main 브랜치 푸시 시 실행
-name: CI
+# CI/CD 파이프라인
+# PR 시 CI 실행, main 브랜치 push 시 CI + CD 실행
+name: CI/CD
 
 on:
   push:
@@ -11,6 +11,10 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   lint-and-typecheck:
@@ -136,3 +140,74 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+  # ========================================
+  # CD Jobs (main 브랜치에서만 실행)
+  # ========================================
+
+  deploy-dashboard:
+    name: Deploy Dashboard
+    runs-on: ubuntu-latest
+    needs: [build-dashboard, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - name: Download dashboard artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dashboard-dist
+          path: out
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::425454508084:role/baepdoongi-github-actions
+          aws-region: ap-northeast-2
+
+      - name: Deploy to S3
+        run: aws s3 sync out/ s3://baepdoongi-dashboard-425454508084-ap-northeast-2 --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E1I8QZ66ZQH0BY \
+            --paths "/*"
+
+  deploy-bot:
+    name: Deploy Bot (CDK)
+    runs-on: ubuntu-latest
+    needs: [build-bot, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::425454508084:role/baepdoongi-github-actions
+          aws-region: ap-northeast-2
+
+      - name: Deploy CDK stacks
+        run: pnpm cdk -- deploy --all --require-approval never
+        env:
+          CDK_DEFAULT_ACCOUNT: 425454508084
+          CDK_DEFAULT_REGION: ap-northeast-2
