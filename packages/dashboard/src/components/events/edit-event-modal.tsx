@@ -1,8 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Megaphone } from 'lucide-react';
 import { Button, Modal, RichTextEditor } from '@/components/ui';
 import type { Event, EventType } from '@baepdoongi/shared';
+
+const formatAnnouncedAt = (isoString: string): string => {
+  const date = new Date(isoString);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${month}/${day}(${weekday}) ${hours}:${minutes}`;
+};
 
 interface EditEventModalProps {
   isOpen: boolean;
@@ -86,8 +97,39 @@ export function EditEventModal({ isOpen, onClose, event, onConfirm }: EditEventM
     >
       <form id="edit-event-form" onSubmit={handleSubmit} className="p-6 space-y-4">
         {event.announcement && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
-            이 이벤트는 Slack에 공지되었습니다. 수정하면 Slack 메시지도 함께 업데이트됩니다.
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Megaphone className="w-4 h-4 text-blue-600" />
+              <span className="font-medium text-blue-800">Slack 공지 정보</span>
+            </div>
+            <dl className="grid grid-cols-2 gap-2 text-blue-700">
+              <div>
+                <dt className="text-xs text-blue-500">공지 채널</dt>
+                <dd className="font-medium">#{event.announcement.channelName}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-blue-500">공지 일시</dt>
+                <dd className="font-medium">
+                  {formatAnnouncedAt(event.announcement.announcedAt)}
+                </dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs text-blue-500">응답 옵션</dt>
+                <dd className="flex flex-wrap gap-1 mt-1">
+                  {event.announcement.responseOptions.map((opt) => (
+                    <span
+                      key={opt.optionId}
+                      className="px-2 py-0.5 bg-blue-100 rounded text-xs"
+                    >
+                      {opt.emoji} {opt.label}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-xs text-blue-600 border-t border-blue-200 pt-2">
+              수정하면 Slack 메시지도 함께 업데이트됩니다.
+            </p>
           </div>
         )}
 
