@@ -6,6 +6,20 @@ import { Button, Modal } from '@/components/ui';
 import { ResponseOptionsEditor, RESPONSE_TEMPLATES } from './response-options-editor';
 import type { Event, EventResponseOption, SlackChannel } from '@baepdoongi/shared';
 
+// Slack mrkdwn을 HTML로 변환
+function formatSlackText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
+    .replace(/_([^_\n]+)_/g, '<em>$1</em>')
+    .replace(/~([^~\n]+)~/g, '<del>$1</del>')
+    .replace(/`([^`\n]+)`/g, '<code class="bg-gray-200 px-0.5 rounded text-sm font-mono">$1</code>')
+    .replace(/(@channel|@here|@everyone)/g, '<span class="bg-yellow-100 text-yellow-800 px-0.5 rounded">$1</span>')
+    .replace(/\n/g, '<br />');
+}
+
 interface AnnounceModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -207,7 +221,10 @@ export function AnnounceModal({
                 </div>
               </div>
               {event.description && (
-                <div className="text-sm text-gray-700 whitespace-pre-wrap">{event.description}</div>
+                <div
+                  className="text-sm text-gray-700"
+                  dangerouslySetInnerHTML={{ __html: formatSlackText(event.description) }}
+                />
               )}
               <hr className="border-gray-300" />
               <div className="text-xs text-gray-500">
