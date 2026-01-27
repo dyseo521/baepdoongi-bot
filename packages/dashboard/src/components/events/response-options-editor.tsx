@@ -192,16 +192,17 @@ export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseO
               <button
                 type="button"
                 onClick={() => toggleRequiresInput(index)}
-                className={`p-1.5 rounded transition-colors ${
+                className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
                   option.requiresInput
                     ? 'bg-primary-100 text-primary-600'
                     : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
                 }`}
                 disabled={disabled}
-                title={option.requiresInput ? '텍스트 입력 활성화됨' : '텍스트 입력 비활성화'}
-                aria-label="텍스트 입력 토글"
+                title={option.requiresInput ? '추가 입력 활성화됨' : '클릭하여 추가 입력 받기'}
+                aria-label="추가 입력 토글"
               >
                 <MessageSquare className="w-4 h-4" aria-hidden="true" />
+                <span className="text-xs whitespace-nowrap">추가 입력</span>
               </button>
 
               {/* 확장/축소 버튼 (텍스트 입력이 활성화된 경우만) */}
@@ -239,23 +240,23 @@ export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseO
                   이 옵션 선택 시 Slack에서 추가 입력을 받습니다
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">입력 필드 레이블</label>
+                  <label className="block text-xs text-gray-600 mb-1">질문</label>
                   <input
                     type="text"
                     value={option.inputLabel || ''}
                     onChange={(e) => updateOption(index, 'inputLabel', e.target.value)}
-                    placeholder="예: 불참 사유"
+                    placeholder="예: 불참 사유를 알려주세요"
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
                     disabled={disabled}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">플레이스홀더</label>
+                  <label className="block text-xs text-gray-600 mb-1">안내 문구</label>
                   <input
                     type="text"
                     value={option.inputPlaceholder || ''}
                     onChange={(e) => updateOption(index, 'inputPlaceholder', e.target.value)}
-                    placeholder="예: 사유를 입력해주세요"
+                    placeholder="예: 간단하게 사유를 입력해주세요"
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
                     disabled={disabled}
                   />

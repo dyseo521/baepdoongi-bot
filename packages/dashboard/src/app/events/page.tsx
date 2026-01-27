@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MapPin, Clock, Send, CheckCircle, Trash2, Pencil, Users, Edit3 } from 'lucide-react';
+import { Plus, MapPin, Clock, Send, CheckCircle, Trash2, Pencil, Users, Edit3, AlertCircle } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, EventsPageSkeleton } from '@/components/ui';
 import { AnnounceModal, CreateEventModal, EditEventModal, RSVPListModal } from '@/components/events';
@@ -228,58 +228,74 @@ function EventsContent() {
       key: 'actions',
       header: '액션',
       render: (event: Event) => (
-        <div className="flex items-center gap-2">
-          {event.announcement ? (
-            <>
-              {/* 공지됨 배지 - 클릭하면 공지 수정 모달 열림 */}
-              <button
-                type="button"
-                onClick={() => openAnnounceModal(event, 'edit')}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
-                title="클릭하여 공지 수정"
-              >
-                <CheckCircle className="w-3 h-3" />
-                공지됨
-                <Edit3 className="w-3 h-3 ml-0.5" />
-              </button>
-              {/* RSVP 확인 버튼 */}
+        <div className="flex items-center justify-between gap-4">
+          {/* 액션 버튼 그룹 */}
+          <div className="flex items-center gap-3">
+            {event.announcement ? (
+              <>
+                {/* RSVP 확인 버튼 */}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<Users className="w-3 h-3" />}
+                  onClick={() => openRSVPModal(event)}
+                >
+                  응답 확인
+                </Button>
+                {/* 공지 수정 버튼 */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  leftIcon={<Edit3 className="w-3 h-3" />}
+                  onClick={() => openAnnounceModal(event, 'edit')}
+                >
+                  공지 수정
+                </Button>
+              </>
+            ) : (
               <Button
                 size="sm"
                 variant="secondary"
-                leftIcon={<Users className="w-3 h-3" />}
-                onClick={() => openRSVPModal(event)}
+                leftIcon={<Send className="w-3 h-3" />}
+                onClick={() => openAnnounceModal(event, 'create')}
+                disabled={event.status === 'cancelled'}
               >
-                응답 확인
+                Slack 공지
               </Button>
-            </>
-          ) : (
+            )}
             <Button
               size="sm"
-              variant="secondary"
-              leftIcon={<Send className="w-3 h-3" />}
-              onClick={() => openAnnounceModal(event, 'create')}
-              disabled={event.status === 'cancelled'}
+              variant="ghost"
+              leftIcon={<Pencil className="w-3 h-3" />}
+              onClick={() => openEditModal(event)}
             >
-              Slack 공지
+              수정
             </Button>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            leftIcon={<Pencil className="w-3 h-3" />}
-            onClick={() => openEditModal(event)}
-          >
-            수정
-          </Button>
-          <Button
-            size="sm"
-            variant="danger"
-            leftIcon={<Trash2 className="w-3 h-3" />}
-            onClick={() => handleDelete(event.eventId, event.title)}
-            disabled={deleteMutation.isPending}
-          >
-            삭제
-          </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              leftIcon={<Trash2 className="w-3 h-3" />}
+              onClick={() => handleDelete(event.eventId, event.title)}
+              disabled={deleteMutation.isPending}
+            >
+              삭제
+            </Button>
+          </div>
+
+          {/* 공지 상태 표시 (오른쪽, 클릭 불가) */}
+          <div className="flex-shrink-0">
+            {event.announcement ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                <CheckCircle className="w-3 h-3" />
+                공지됨
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
+                <AlertCircle className="w-3 h-3" />
+                공지 대기
+              </span>
+            )}
+          </div>
         </div>
       ),
     },

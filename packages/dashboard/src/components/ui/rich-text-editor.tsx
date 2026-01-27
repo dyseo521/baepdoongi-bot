@@ -1,8 +1,8 @@
 'use client';
 
 import { clsx } from 'clsx';
-import { Bold, HelpCircle, Italic, Smile } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { Bold, Eye, EyeOff, HelpCircle, Italic, Smile } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 
 interface RichTextEditorProps {
@@ -26,6 +26,32 @@ export function RichTextEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Slack mrkdwn → HTML 변환
+  const formattedPreview = useMemo(() => {
+    if (!value) return null;
+
+    let html = value
+      // HTML 엔티티 이스케이프
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      // Bold: *text*
+      .replace(/\*([^*\n]+)\*/g, '<strong class="font-semibold">$1</strong>')
+      // Italic: _text_
+      .replace(/_([^_\n]+)_/g, '<em class="italic">$1</em>')
+      // Strikethrough: ~text~
+      .replace(/~([^~\n]+)~/g, '<del class="line-through">$1</del>')
+      // Inline code: `code`
+      .replace(/`([^`\n]+)`/g, '<code class="bg-gray-100 px-1 rounded text-sm font-mono">$1</code>')
+      // Mentions: @channel, @here, @everyone
+      .replace(/(@channel|@here|@everyone)/g, '<span class="bg-yellow-100 text-yellow-800 px-0.5 rounded">$1</span>')
+      // Line breaks
+      .replace(/\n/g, '<br />');
+
+    return html;
+  }, [value]);
 
   // Wrap selected text with markers
   const wrapSelection = useCallback(
@@ -128,28 +154,6 @@ export function RichTextEditor({
     [handleBold, handleItalic]
   );
 
-  // Highlight mentions in display
-  const getHighlightedPreview = useCallback(() => {
-    if (!value) return null;
-
-    const mentionRegex = /(@channel|@here|@everyone)/g;
-    const parts = value.split(mentionRegex);
-
-    return parts.map((part, index) => {
-      if (mentionRegex.test(part)) {
-        return (
-          <span
-            key={index}
-            className="bg-yellow-100 text-yellow-800 px-0.5 rounded"
-          >
-            {part}
-          </span>
-        );
-      }
-      return part;
-    });
-  }, [value]);
-
   return (
     <div ref={containerRef} className={clsx('relative', className)}>
       {/* Toolbar */}
@@ -214,6 +218,26 @@ export function RichTextEditor({
           )}
         </div>
         <div className="flex-1" />
+        {/* 미리보기 토글 버튼 */}
+        <button
+          type="button"
+          onClick={() => setShowPreview(!showPreview)}
+          className={clsx(
+            'p-1.5 rounded hover:bg-gray-200 transition-colors flex items-center gap-1',
+            'focus:outline-none focus:ring-2 focus:ring-primary-500',
+            showPreview && 'bg-gray-200'
+          )}
+          title={showPreview ? '미리보기 닫기' : '미리보기'}
+          aria-label={showPreview ? '미리보기 닫기' : '미리보기'}
+          aria-pressed={showPreview}
+        >
+          {showPreview ? (
+            <EyeOff className="w-4 h-4 text-gray-600" />
+          ) : (
+            <Eye className="w-4 h-4 text-gray-600" />
+          )}
+          <span className="text-xs text-gray-600">미리보기</span>
+        </button>
         <div className="relative">
           <button
             type="button"
@@ -281,12 +305,31 @@ export function RichTextEditor({
         placeholder={placeholder}
         rows={rows}
         className={clsx(
-          'w-full px-3 py-2 border border-gray-300 rounded-b-lg',
+          'w-full px-3 py-2 border border-gray-300',
+          showPreview ? 'rounded-none border-b-0' : 'rounded-b-lg',
           'text-sm text-gray-900 placeholder-gray-400',
           'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
           'resize-none'
         )}
       />
+
+      {/* 실시간 서식 미리보기 */}
+      {showPreview && (
+        <div className="p-3 border border-gray-300 border-t-0 rounded-b-lg bg-gray-50">
+          <div className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+            <Eye className="w-3 h-3" />
+            미리보기
+          </div>
+          {formattedPreview ? (
+            <div
+              className="text-sm text-gray-900 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: formattedPreview }}
+            />
+          ) : (
+            <div className="text-sm text-gray-400 italic">내용이 없습니다</div>
+          )}
+        </div>
+      )}
 
       {/* Mention preview */}
       {value && /(@channel|@here|@everyone)/.test(value) && (
