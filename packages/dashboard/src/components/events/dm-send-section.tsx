@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { Send, ChevronDown, Loader2, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Button, RichTextEditor } from '../ui';
@@ -12,26 +12,46 @@ interface DMSendSectionProps {
   event: Event;
   selectedUserIds: string[];
   onDMSent?: () => void;
+  onCloseModal?: () => void;
 }
 
 type SendStatus = 'idle' | 'selecting' | 'editing' | 'sending' | 'polling' | 'completed' | 'error';
 
-export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectionProps) {
+/**
+ * Slack mrkdwn 형식의 볼드체를 HTML로 렌더링합니다.
+ * *bold* → <strong>bold</strong>
+ */
+function renderSlackMarkdown(text: string): ReactNode {
+  const parts = text.split(/(\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <strong key={i}>{part.slice(1, -1)}</strong>;
+    }
+    return part;
+  });
+}
+
+export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }: DMSendSectionProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<DMTemplate | null>(null);
   const [customMessage, setCustomMessage] = useState('');
+  const [editedMessage, setEditedMessage] = useState('');
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle');
   const [currentJob, setCurrentJob] = useState<BulkDMJob | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 템플릿 변수 치환
   const renderPreview = useMemo(() => {
     if (!selectedTemplate) return '';
 
-    let template = selectedTemplate.messageTemplate;
+    let template: string;
     if (selectedTemplate.templateId === 'custom') {
       template = customMessage;
+    } else {
+      // editedMessage가 있으면 그걸 사용, 없으면 기본 템플릿
+      template = editedMessage || selectedTemplate.messageTemplate;
     }
 
     const datetime = new Date(event.datetime).toLocaleString('ko-KR', {
@@ -48,7 +68,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
       .replace(/\{\{datetime\}\}/g, datetime)
       .replace(/\{\{location\}\}/g, event.location || '미정')
       .replace(/\{\{customMessage\}\}/g, customMessage);
-  }, [selectedTemplate, customMessage, event]);
+  }, [selectedTemplate, customMessage, editedMessage, event]);
 
   // 폴링 정리
   const clearPolling = useCallback(() => {
@@ -63,13 +83,47 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
     return () => clearPolling();
   }, [clearPolling]);
 
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // 템플릿 선택
   const handleSelectTemplate = (template: DMTemplate) => {
     setSelectedTemplate(template);
     setIsDropdownOpen(false);
     setSendStatus('editing');
     setCustomMessage('');
+    setEditedMessage(template.messageTemplate);
     setErrorMessage(null);
+  };
+
+  // 에디터 값 변경 핸들러
+  const handleEditorChange = (value: string) => {
+    if (selectedTemplate?.templateId === 'custom') {
+      setCustomMessage(value);
+    } else if (selectedTemplate?.templateId === 'additional') {
+      setCustomMessage(value);
+    } else {
+      setEditedMessage(value);
+    }
+  };
+
+  // 현재 에디터에 표시할 값
+  const getEditorValue = () => {
+    if (selectedTemplate?.templateId === 'custom') {
+      return customMessage;
+    }
+    if (selectedTemplate?.templateId === 'additional') {
+      return customMessage;
+    }
+    return editedMessage;
   };
 
   // DM 발송
@@ -80,10 +134,21 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
     setErrorMessage(null);
 
     try {
+      // customMessage에 실제 발송할 메시지를 담아 전송
+      let messageToSend: string | undefined;
+      if (selectedTemplate.templateId === 'custom') {
+        messageToSend = customMessage;
+      } else if (selectedTemplate.templateId === 'additional') {
+        messageToSend = customMessage;
+      } else if (editedMessage && editedMessage !== selectedTemplate.messageTemplate) {
+        // 템플릿이 수정되었으면 customMessage로 전송
+        messageToSend = editedMessage;
+      }
+
       const request = {
         userIds: selectedUserIds,
         templateId: selectedTemplate.templateId,
-        ...((selectedTemplate.templateId === 'custom' || selectedTemplate.templateId === 'additional') && customMessage && { customMessage }),
+        ...(messageToSend && { customMessage: messageToSend }),
       };
       const response: BulkDMJobResponse = await sendBulkDM(event.eventId, request);
 
@@ -134,6 +199,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
     clearPolling();
     setSelectedTemplate(null);
     setCustomMessage('');
+    setEditedMessage('');
     setSendStatus('idle');
     setCurrentJob(null);
     setErrorMessage(null);
@@ -149,7 +215,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
     <div className="border-b border-gray-200 pb-4 mb-4">
       {/* DM 발송 버튼 / 드롭다운 */}
       {sendStatus === 'idle' && (
-        <div className="relative">
+        <div className="relative flex flex-col items-end" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -168,7 +234,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
 
           {/* 드롭다운 메뉴 */}
           {isDropdownOpen && (
-            <div className="absolute z-10 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+            <div className="absolute right-0 top-full z-10 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
               {DM_TEMPLATES.map((template) => (
                 <button
                   key={template.templateId}
@@ -194,12 +260,39 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
       {/* 템플릿 편집 상태 */}
       {(sendStatus === 'editing' || sendStatus === 'sending') && selectedTemplate && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Send className="w-4 h-4 text-primary-600" />
-              <span className="font-medium text-gray-900">{selectedTemplate.name}</span>
-              <span className="text-sm text-gray-500">• {selectedUserIds.length}명 선택</span>
+          <div className="flex items-center justify-end gap-3">
+            {/* 템플릿 변경 드롭다운 */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                disabled={sendStatus === 'sending'}
+                className="flex items-center gap-2 text-sm hover:bg-gray-100 px-2 py-1 rounded-md transition-colors"
+              >
+                <Send className="w-4 h-4 text-primary-600" />
+                <span className="font-medium text-gray-900">{selectedTemplate.name}</span>
+                <ChevronDown className="w-4 h-4 text-gray-500" />
+              </button>
+              {isDropdownOpen && (
+                <div className="absolute right-0 top-full z-10 mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                  {DM_TEMPLATES.map((template) => (
+                    <button
+                      key={template.templateId}
+                      type="button"
+                      onClick={() => handleSelectTemplate(template)}
+                      className={clsx(
+                        'w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors',
+                        template.templateId === selectedTemplate.templateId && 'bg-gray-50'
+                      )}
+                    >
+                      <div className="font-medium text-gray-900">{template.name}</div>
+                      <div className="text-xs text-gray-500">{template.description}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+            <span className="text-sm text-gray-500">• {selectedUserIds.length}명 선택</span>
             <button
               type="button"
               onClick={handleReset}
@@ -210,25 +303,25 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
             </button>
           </div>
 
-          {/* 메시지 입력 에디터 (custom, additional 템플릿) */}
-          {(selectedTemplate.templateId === 'custom' || selectedTemplate.templateId === 'additional') && (
-            <RichTextEditor
-              value={customMessage}
-              onChange={setCustomMessage}
-              placeholder={
-                selectedTemplate.templateId === 'custom'
-                  ? '메시지를 입력하세요...'
-                  : '추가 공지 내용을 입력하세요...'
-              }
-              rows={4}
-            />
-          )}
+          {/* 메시지 입력 에디터 (모든 템플릿) */}
+          <RichTextEditor
+            value={getEditorValue()}
+            onChange={handleEditorChange}
+            placeholder={
+              selectedTemplate.templateId === 'custom'
+                ? '메시지를 입력하세요...'
+                : selectedTemplate.templateId === 'additional'
+                  ? '추가 공지 내용을 입력하세요...'
+                  : '메시지를 수정할 수 있습니다...'
+            }
+            rows={6}
+          />
 
           {/* 미리보기 */}
           <div className="bg-gray-50 rounded-lg p-3">
             <div className="text-xs text-gray-500 mb-2">미리보기</div>
             <div className="text-sm text-gray-800 whitespace-pre-wrap">
-              {renderPreview || '(메시지를 입력하세요)'}
+              {renderPreview ? renderSlackMarkdown(renderPreview) : '(메시지를 입력하세요)'}
             </div>
           </div>
 
@@ -279,7 +372,10 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
               {currentJob.failedCount > 0 && ` (${currentJob.failedCount}건 실패)`}
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={handleReset}>
+          <Button variant="secondary" size="sm" onClick={() => {
+            handleReset();
+            onCloseModal?.();
+          }}>
             닫기
           </Button>
         </div>
