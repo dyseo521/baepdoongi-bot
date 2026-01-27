@@ -25,9 +25,8 @@ export const DM_TEMPLATES: DMTemplate[] = [
     description: '행사 참석 리마인더',
     messageTemplate: `안녕하세요! 🙌
 
-*{{eventTitle}}* 행사가 곧 시작됩니다.
+*{{eventTitle}}* 행사가 {{datetime}}에 시작됩니다.
 
-📅 일시: {{datetime}}
 📍 장소: {{location}}
 
 행사장에서 뵙겠습니다! 😊`,
