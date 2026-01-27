@@ -28,6 +28,45 @@
   transform: rotate(3deg) translate(0px, -4px);
 }
 
+/* Tiptap/ProseMirror Editor Styles */
+.rich-text-editor .ProseMirror {
+  @apply px-3 py-2 text-sm leading-relaxed outline-none;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: var(--editor-height, calc(4 * 1.5rem + 1rem));
+}
+
+.rich-text-editor .ProseMirror p {
+  @apply m-0;
+}
+
+.rich-text-editor .ProseMirror p.is-editor-empty:first-child::before {
+  @apply text-gray-400 pointer-events-none float-left h-0;
+  content: attr(data-placeholder);
+}
+
+/* 서식 스타일 */
+.rich-text-editor .ProseMirror strong {
+  @apply font-semibold;
+}
+
+.rich-text-editor .ProseMirror em {
+  @apply italic;
+}
+
+.rich-text-editor .ProseMirror del,
+.rich-text-editor .ProseMirror s {
+  @apply line-through;
+}
+
+.rich-text-editor .ProseMirror code {
+  @apply bg-gray-200 px-0.5 rounded text-sm font-mono;
+}
+
+/* 선택 영역 스타일 */
+.rich-text-editor .ProseMirror ::selection {
+  @apply bg-primary-200;
+}
+
 @layer components {
   .card {
     @apply bg-white rounded-xl shadow-sm border border-gray-100;
