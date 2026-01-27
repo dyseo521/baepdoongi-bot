@@ -24,7 +24,7 @@ interface AnnounceModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: Event | null;
-  onConfirm: (channelId: string, responseOptions: EventResponseOption[]) => Promise<void>;
+  onConfirm: (channelId: string, responseOptions: EventResponseOption[], allowMultipleSelection: boolean) => Promise<void>;
 }
 
 export function AnnounceModal({
@@ -38,6 +38,7 @@ export function AnnounceModal({
   const [responseOptions, setResponseOptions] = useState<EventResponseOption[]>(
     RESPONSE_TEMPLATES.simple
   );
+  const [allowMultipleSelection, setAllowMultipleSelection] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingChannels, setIsLoadingChannels] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +83,7 @@ export function AnnounceModal({
     if (isOpen && event) {
       setSelectedChannelId('');
       setResponseOptions([...RESPONSE_TEMPLATES.simple]);
+      setAllowMultipleSelection(false);
       setError(null);
     }
   }, [isOpen, event]);
@@ -103,7 +105,7 @@ export function AnnounceModal({
     setError(null);
 
     try {
-      await onConfirm(selectedChannelId, responseOptions);
+      await onConfirm(selectedChannelId, responseOptions, allowMultipleSelection);
       onClose();
     } catch (err) {
       setError('공지 전송에 실패했습니다');
@@ -198,6 +200,28 @@ export function AnnounceModal({
             options={responseOptions}
             onChange={setResponseOptions}
           />
+        </div>
+
+        {/* 중복 선택 허용 */}
+        <div className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            id="allow-multiple-selection"
+            checked={allowMultipleSelection}
+            onChange={(e) => setAllowMultipleSelection(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <div>
+            <label
+              htmlFor="allow-multiple-selection"
+              className="text-sm font-medium text-gray-700 cursor-pointer"
+            >
+              중복 선택 허용
+            </label>
+            <p className="text-xs text-gray-500 mt-0.5">
+              여러 응답을 동시에 선택할 수 있습니다
+            </p>
+          </div>
         </div>
 
         {/* 미리보기 */}

@@ -11,6 +11,9 @@ interface ResponseOptionsEditorProps {
   disabled?: boolean;
 }
 
+/** 숫자 이모지 배열 */
+const NUMBER_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+
 /** 기본 응답 옵션 템플릿 */
 export const RESPONSE_TEMPLATES = {
   simple: [
@@ -23,6 +26,10 @@ export const RESPONSE_TEMPLATES = {
     { optionId: 'late', label: '늦참', emoji: '⏰', order: 3 },
     { optionId: 'absent', label: '불참', emoji: '❌', order: 4 },
   ],
+  basic: [
+    { optionId: 'option_1', label: '버튼 1', emoji: '1️⃣', order: 1 },
+    { optionId: 'option_2', label: '버튼 2', emoji: '2️⃣', order: 2 },
+  ],
 };
 
 export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseOptionsEditorProps) {
@@ -30,11 +37,14 @@ export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseO
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const addOption = () => {
+    const nextNumber = options.length + 1;
+    // 다음 숫자 이모지 결정 (1~10까지 지원)
+    const nextEmoji = nextNumber <= 10 ? NUMBER_EMOJIS[nextNumber - 1] : '';
     const newOption: EventResponseOption = {
       optionId: `option_${Date.now()}`,
-      label: '새 옵션',
-      emoji: '',
-      order: options.length + 1,
+      label: `버튼 ${nextNumber}`,
+      emoji: nextEmoji || '',
+      order: nextNumber,
     };
     onChange([...options, newOption]);
   };
@@ -128,7 +138,7 @@ export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseO
     <div className="space-y-4">
       {/* 템플릿 버튼 */}
       {!disabled && (
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
           <span className="text-sm text-gray-500">템플릿:</span>
           <button
             type="button"
@@ -143,6 +153,13 @@ export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseO
             className="text-sm px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
           >
             참석/온라인/늦참/불참
+          </button>
+          <button
+            type="button"
+            onClick={() => applyTemplate('basic')}
+            className="text-sm px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            기본 (1️⃣2️⃣)
           </button>
         </div>
       )}
