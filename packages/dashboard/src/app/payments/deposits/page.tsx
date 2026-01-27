@@ -95,12 +95,15 @@ function DepositsContent() {
       key: 'depositorName',
       header: '입금자명',
       render: (dep: Deposit) => (
-        <div
-          className="cursor-pointer hover:text-primary-600"
+        <button
+          type="button"
+          className="text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 rounded"
           onClick={() => setSelectedDeposit(dep)}
         >
-          <div className="font-medium text-gray-900">{dep.depositorName}</div>
-        </div>
+          <div className="font-medium text-primary-600 group-hover:text-primary-700 group-hover:underline">
+            {dep.depositorName}
+          </div>
+        </button>
       ),
     },
     {
