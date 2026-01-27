@@ -292,14 +292,14 @@ export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseO
           size="sm"
           onClick={addOption}
           leftIcon={<Plus className="w-4 h-4" />}
-          disabled={options.length >= 5}
+          disabled={options.length >= 10}
         >
           옵션 추가
         </Button>
       )}
 
-      {options.length >= 5 && !disabled && (
-        <p className="text-xs text-gray-500">최대 5개의 옵션까지 추가할 수 있습니다.</p>
+      {options.length >= 10 && !disabled && (
+        <p className="text-xs text-gray-500">최대 10개의 옵션까지 추가할 수 있습니다.</p>
       )}
     </div>
   );
