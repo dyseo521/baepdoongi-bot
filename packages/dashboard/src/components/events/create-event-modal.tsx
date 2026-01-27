@@ -89,7 +89,7 @@ export function CreateEventModal({ isOpen, onClose, onConfirm }: CreateEventModa
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="예: 2024 정기 총회"
+            placeholder="예: 2026 개강총회"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             required
           />
@@ -119,7 +119,7 @@ export function CreateEventModal({ isOpen, onClose, onConfirm }: CreateEventModa
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="예: 공학관 301호"
+            placeholder="예: 동아리방 (5동 지하 003호)"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           />
         </div>
