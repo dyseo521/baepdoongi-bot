@@ -311,6 +311,14 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
             </button>
           </div>
 
+          {/* 미리보기 */}
+          <div className="bg-gray-50 rounded-lg p-3">
+            <div className="text-xs text-gray-500 mb-2">미리보기</div>
+            <div className="text-sm text-gray-800 whitespace-pre-wrap">
+              {renderPreview ? renderSlackMarkdown(renderPreview) : '(메시지를 입력하세요)'}
+            </div>
+          </div>
+
           {/* 메시지 입력 에디터 (모든 템플릿) */}
           <RichTextEditor
             value={getEditorValue()}
@@ -326,14 +334,6 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
             }
             rows={6}
           />
-
-          {/* 미리보기 */}
-          <div className="bg-gray-50 rounded-lg p-3">
-            <div className="text-xs text-gray-500 mb-2">미리보기</div>
-            <div className="text-sm text-gray-800 whitespace-pre-wrap">
-              {renderPreview ? renderSlackMarkdown(renderPreview) : '(메시지를 입력하세요)'}
-            </div>
-          </div>
 
           {/* 발송 버튼 */}
           <div className="flex justify-end gap-3 mt-4">
