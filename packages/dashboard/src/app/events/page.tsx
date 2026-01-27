@@ -7,6 +7,7 @@ import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, EventsPageSkeleton } from '@/components/ui';
 import { AnnounceModal, CreateEventModal, EditEventModal, RSVPListModal } from '@/components/events';
 import { fetchEvents, announceEvent, deleteEvent, createEvent, updateEvent } from '@/lib/api';
+import { formatEventDateTimeForDisplay } from '@/lib/utils';
 import type { Event, EventResponseOption, EventType } from '@baepdoongi/shared';
 
 const statusLabels: Record<string, { label: string; variant: 'success' | 'warning' | 'default' }> = {
@@ -193,12 +194,14 @@ function EventsContent() {
         <div className="flex items-center gap-1.5 text-gray-600">
           <Clock className="w-4 h-4" />
           <span>
-            {new Date(event.datetime).toLocaleString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
+            {formatEventDateTimeForDisplay({
+              ...(event.startDate && { startDate: event.startDate }),
+              ...(event.endDate && { endDate: event.endDate }),
+              ...(event.startTime && { startTime: event.startTime }),
+              ...(event.endTime && { endTime: event.endTime }),
+              ...(event.isMultiDay !== undefined && { isMultiDay: event.isMultiDay }),
+              ...(event.hasTime !== undefined && { hasTime: event.hasTime }),
+              datetime: event.datetime,
             })}
           </span>
         </div>

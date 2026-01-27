@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Send, Hash, Eye, Loader2 } from 'lucide-react';
 import { Button, Modal } from '@/components/ui';
 import { ResponseOptionsEditor, RESPONSE_TEMPLATES } from './response-options-editor';
+import { formatEventDateTimeForDisplay } from '@/lib/utils';
 import type { Event, EventResponseOption, SlackChannel } from '@baepdoongi/shared';
 
 // Slack mrkdwn을 HTML로 변환
@@ -116,14 +117,14 @@ export function AnnounceModal({
   };
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId);
-  const datetime = new Date(event.datetime);
-  const formattedDate = datetime.toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
+  const formattedDate = formatEventDateTimeForDisplay({
+    ...(event.startDate && { startDate: event.startDate }),
+    ...(event.endDate && { endDate: event.endDate }),
+    ...(event.startTime && { startTime: event.startTime }),
+    ...(event.endTime && { endTime: event.endTime }),
+    ...(event.isMultiDay !== undefined && { isMultiDay: event.isMultiDay }),
+    ...(event.hasTime !== undefined && { hasTime: event.hasTime }),
+    datetime: event.datetime,
   });
 
   return (
