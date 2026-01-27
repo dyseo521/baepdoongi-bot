@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Users,
   CheckCircle,
@@ -10,16 +10,14 @@ import {
   MessageSquare,
   Bot,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { StatCard } from '@/components/ui';
-import { ChartCard, TrendsChart, QuickActions } from '@/components/dashboard';
+import { ChartCard, TrendsChart } from '@/components/dashboard';
 import {
   fetchDashboardStats,
   fetchDashboardTrends,
   fetchEvents,
   fetchMembers,
-  syncMembers,
 } from '@/lib/api';
 import type { DashboardStats, DashboardTrends, Event, Member } from '@baepdoongi/shared';
 
@@ -34,8 +32,6 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
   const [membersPeriod, setMembersPeriod] = useState<PeriodOption>(7);
   const [ragPeriod, setRagPeriod] = useState<PeriodOption>(7);
 
@@ -64,14 +60,6 @@ function DashboardContent() {
     queryFn: () => fetchMembers('db'),
   });
 
-  const syncMutation = useMutation({
-    mutationFn: syncMembers,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['members'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
-    },
-  });
-
   // 7일 이내 이벤트 필터링
   const upcomingEvents = useMemo(() => {
     const now = new Date();
@@ -93,23 +81,6 @@ function DashboardContent() {
       .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime());
   }, [members]);
 
-  // 이름 미준수 회원 수
-  const invalidNameCount = useMemo(() => {
-    return members.filter((m) => !m.isNameValid).length;
-  }, [members]);
-
-  const handleSyncMembers = () => {
-    syncMutation.mutate();
-  };
-
-  const handleCreateEvent = () => {
-    router.push('/dashboard/events?action=create');
-  };
-
-  const handleWarnInvalidNames = () => {
-    router.push('/dashboard/members?filter=invalid');
-  };
-
   return (
     <div>
       <PageHeader
@@ -119,7 +90,7 @@ function DashboardContent() {
 
       <div className="p-8 space-y-8">
         {/* 통계 카드 그리드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard
             icon={Users}
             title="전체 회원"
@@ -127,21 +98,8 @@ function DashboardContent() {
             changeLabel="명"
           />
           <StatCard
-            icon={CheckCircle}
-            title="이름 형식 준수"
-            value={statsLoading ? '-' : stats?.validNameMembers ?? 0}
-            changeLabel="명"
-            variant="success"
-          />
-          <StatCard
-            icon={UserPlus}
-            title="이번 달 신규"
-            value={statsLoading ? '-' : stats?.newMembersThisMonth ?? 0}
-            changeLabel="명"
-          />
-          <StatCard
             icon={Calendar}
-            title="활성 이벤트"
+            title="예정된 이벤트"
             value={statsLoading ? '-' : stats?.activeEvents ?? 0}
             changeLabel="개"
           />
@@ -151,12 +109,6 @@ function DashboardContent() {
             value={statsLoading ? '-' : stats?.pendingSuggestions ?? 0}
             changeLabel="건"
             variant={stats?.pendingSuggestions ? 'warning' : 'default'}
-          />
-          <StatCard
-            icon={Bot}
-            title="오늘 RAG 질문"
-            value={statsLoading ? '-' : stats?.ragQueriesToday ?? 0}
-            changeLabel="건"
           />
         </div>
 
@@ -303,15 +255,6 @@ function DashboardContent() {
             )}
           </div>
         </div>
-
-        {/* 빠른 작업 */}
-        <QuickActions
-          onSyncMembers={handleSyncMembers}
-          onCreateEvent={handleCreateEvent}
-          onWarnInvalidNames={handleWarnInvalidNames}
-          isSyncing={syncMutation.isPending}
-          invalidNameCount={invalidNameCount}
-        />
       </div>
     </div>
   );
