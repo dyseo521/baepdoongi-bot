@@ -248,7 +248,7 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
       onClose={handleClose}
       title="응답 현황 및 DM 발송"
       titleIcon={<Users className="w-5 h-5" />}
-      maxWidth="lg"
+      maxWidth="2xl"
     >
       <div className="min-h-[400px]">
         {/* 탭 네비게이션 */}
