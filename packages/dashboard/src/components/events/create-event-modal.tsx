@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Modal } from '@/components/ui';
+import { Button, Modal, RichTextEditor } from '@/components/ui';
 import type { EventType } from '@baepdoongi/shared';
 
 interface CreateEventModalProps {
@@ -62,6 +62,7 @@ export function CreateEventModal({ isOpen, onClose, onConfirm }: CreateEventModa
       isOpen={isOpen}
       onClose={onClose}
       title="새 이벤트 만들기"
+      maxWidth="lg"
       footer={
         <>
           <Button type="button" variant="secondary" onClick={onClose}>
@@ -141,16 +142,14 @@ export function CreateEventModal({ isOpen, onClose, onConfirm }: CreateEventModa
         </div>
 
         <div>
-          <label htmlFor="event-description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             설명
           </label>
-          <textarea
-            id="event-description"
+          <RichTextEditor
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="이벤트 설명을 입력하세요"
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            onChange={setDescription}
+            placeholder="이벤트 설명을 입력하세요 (Slack 서식 지원)"
+            rows={4}
           />
         </div>
       </form>
