@@ -7,6 +7,7 @@ import { Button, RichTextEditor } from '../ui';
 import { DM_TEMPLATES, type DMTemplate } from '@baepdoongi/shared';
 import type { Event, BulkDMJob, BulkDMJobResponse } from '@baepdoongi/shared';
 import { sendBulkDM, getBulkDMJob } from '../../lib/api';
+import { formatEventDateTimeForDisplay } from '../../lib/utils';
 
 interface DMSendSectionProps {
   event: Event;
@@ -49,18 +50,23 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
     let template: string;
     if (selectedTemplate.templateId === 'custom') {
       template = customMessage;
+    } else if (selectedTemplate.templateId === 'remind' || selectedTemplate.templateId === 'additional') {
+      // remind, additional은 고정 템플릿 + customMessage
+      template = selectedTemplate.messageTemplate;
     } else {
       // editedMessage가 있으면 그걸 사용, 없으면 기본 템플릿
       template = editedMessage || selectedTemplate.messageTemplate;
     }
 
-    const datetime = new Date(event.datetime).toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
+    // 새 필드가 있으면 사용, 없으면 기존 datetime 사용
+    const datetime = formatEventDateTimeForDisplay({
+      ...(event.startDate && { startDate: event.startDate }),
+      ...(event.endDate && { endDate: event.endDate }),
+      ...(event.startTime && { startTime: event.startTime }),
+      ...(event.endTime && { endTime: event.endTime }),
+      ...(event.isMultiDay !== undefined && { isMultiDay: event.isMultiDay }),
+      ...(event.hasTime !== undefined && { hasTime: event.hasTime }),
+      datetime: event.datetime,
     });
 
     return template
@@ -108,7 +114,8 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
   const handleEditorChange = (value: string) => {
     if (selectedTemplate?.templateId === 'custom') {
       setCustomMessage(value);
-    } else if (selectedTemplate?.templateId === 'additional') {
+    } else if (selectedTemplate?.templateId === 'additional' || selectedTemplate?.templateId === 'remind') {
+      // remind, additional은 customMessage만 입력
       setCustomMessage(value);
     } else {
       setEditedMessage(value);
@@ -120,7 +127,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
     if (selectedTemplate?.templateId === 'custom') {
       return customMessage;
     }
-    if (selectedTemplate?.templateId === 'additional') {
+    if (selectedTemplate?.templateId === 'additional' || selectedTemplate?.templateId === 'remind') {
       return customMessage;
     }
     return editedMessage;
@@ -138,7 +145,8 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
       let messageToSend: string | undefined;
       if (selectedTemplate.templateId === 'custom') {
         messageToSend = customMessage;
-      } else if (selectedTemplate.templateId === 'additional') {
+      } else if (selectedTemplate.templateId === 'additional' || selectedTemplate.templateId === 'remind') {
+        // remind, additional은 customMessage 전송
         messageToSend = customMessage;
       } else if (editedMessage && editedMessage !== selectedTemplate.messageTemplate) {
         // 템플릿이 수정되었으면 customMessage로 전송
@@ -215,7 +223,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
     <div className="border-b border-gray-200 pb-4 mb-4">
       {/* DM 발송 버튼 / 드롭다운 */}
       {sendStatus === 'idle' && (
-        <div className="relative flex flex-col items-end" ref={dropdownRef}>
+        <div className="relative flex flex-col items-end pr-4" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -312,7 +320,9 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
                 ? '메시지를 입력하세요...'
                 : selectedTemplate.templateId === 'additional'
                   ? '추가 공지 내용을 입력하세요...'
-                  : '메시지를 수정할 수 있습니다...'
+                  : selectedTemplate.templateId === 'remind'
+                    ? '추가 메시지를 입력하세요 (선택사항)...'
+                    : '메시지를 수정할 수 있습니다...'
             }
             rows={6}
           />
