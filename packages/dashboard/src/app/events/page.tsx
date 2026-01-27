@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MapPin, Clock, Send, CheckCircle, Trash2, Pencil, Users, Edit3, AlertCircle } from 'lucide-react';
+import { Plus, MapPin, Clock, Send, CheckCircle, Trash2, Pencil, Users, AlertCircle } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, EventsPageSkeleton } from '@/components/ui';
 import { AnnounceModal, CreateEventModal, EditEventModal, RSVPListModal } from '@/components/events';
@@ -38,7 +38,6 @@ function EventsContent() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isRSVPModalOpen, setIsRSVPModalOpen] = useState(false);
-  const [announceMode, setAnnounceMode] = useState<'create' | 'edit'>('create');
 
   const { data: events = [], isLoading, isError, error } = useQuery<Event[]>({
     queryKey: ['events'],
@@ -161,9 +160,8 @@ function EventsContent() {
     });
   };
 
-  const openAnnounceModal = (event: Event, mode: 'create' | 'edit' = 'create') => {
+  const openAnnounceModal = (event: Event) => {
     setSelectedEvent(event);
-    setAnnounceMode(mode);
     setIsAnnounceModalOpen(true);
   };
 
@@ -232,32 +230,20 @@ function EventsContent() {
           {/* 액션 버튼 그룹 */}
           <div className="flex items-center gap-3">
             {event.announcement ? (
-              <>
-                {/* RSVP 확인 버튼 */}
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  leftIcon={<Users className="w-3 h-3" />}
-                  onClick={() => openRSVPModal(event)}
-                >
-                  응답 확인
-                </Button>
-                {/* 공지 수정 버튼 */}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  leftIcon={<Edit3 className="w-3 h-3" />}
-                  onClick={() => openAnnounceModal(event, 'edit')}
-                >
-                  공지 수정
-                </Button>
-              </>
+              <Button
+                size="sm"
+                variant="primary"
+                leftIcon={<Users className="w-3 h-3" />}
+                onClick={() => openRSVPModal(event)}
+              >
+                응답 확인
+              </Button>
             ) : (
               <Button
                 size="sm"
                 variant="secondary"
                 leftIcon={<Send className="w-3 h-3" />}
-                onClick={() => openAnnounceModal(event, 'create')}
+                onClick={() => openAnnounceModal(event)}
                 disabled={event.status === 'cancelled'}
               >
                 Slack 공지
@@ -332,11 +318,6 @@ function EventsContent() {
         onClose={() => setIsAnnounceModalOpen(false)}
         event={selectedEvent}
         onConfirm={handleAnnounce}
-        mode={announceMode}
-        onEdit={async () => {
-          // edit 모드에서는 이벤트 업데이트가 필요없음 (이미 EditEventModal에서 처리)
-          // 모달을 닫기만 하면 됨
-        }}
       />
 
       {/* 이벤트 생성 모달 */}
