@@ -2,21 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
-import { DataTable, Badge, Button, Modal, SuggestionsPageSkeleton } from '@/components/ui';
+import { DataTable, Badge, Button, Modal, SuggestionsPageSkeleton, StatusDropdown, statusConfig } from '@/components/ui';
 import { fetchSuggestions, updateSuggestionStatus } from '@/lib/api';
 import type { Suggestion, SuggestionStatus } from '@baepdoongi/shared';
-
-const statusConfig: Record<
-  SuggestionStatus,
-  { label: string; variant: 'success' | 'warning' | 'info' | 'default'; icon: typeof Clock }
-> = {
-  pending: { label: '대기 중', variant: 'warning', icon: Clock },
-  in_review: { label: '검토 중', variant: 'info', icon: Eye },
-  resolved: { label: '완료', variant: 'success', icon: CheckCircle },
-  rejected: { label: '반려', variant: 'default', icon: XCircle },
-};
 
 const categoryLabels: Record<string, string> = {
   general: '📋 일반',
@@ -108,29 +98,13 @@ function SuggestionsContent() {
     {
       key: 'status',
       header: '상태',
-      render: (suggestion: Suggestion) => {
-        const config = statusConfig[suggestion.status];
-        return (
-          <select
-            value={suggestion.status}
-            onChange={(e) =>
-              handleStatusChange(suggestion.suggestionId, e.target.value as SuggestionStatus)
-            }
-            disabled={statusMutation.isPending}
-            className={`text-sm px-2 py-1 rounded-lg border-0 cursor-pointer
-              ${suggestion.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-              ${suggestion.status === 'in_review' ? 'bg-blue-100 text-blue-800' : ''}
-              ${suggestion.status === 'resolved' ? 'bg-green-100 text-green-800' : ''}
-              ${suggestion.status === 'rejected' ? 'bg-gray-100 text-gray-800' : ''}
-            `}
-          >
-            <option value="pending">⏳ 대기 중</option>
-            <option value="in_review">🔍 검토 중</option>
-            <option value="resolved">✅ 완료</option>
-            <option value="rejected">❌ 반려</option>
-          </select>
-        );
-      },
+      render: (suggestion: Suggestion) => (
+        <StatusDropdown
+          value={suggestion.status}
+          onChange={(newStatus) => handleStatusChange(suggestion.suggestionId, newStatus)}
+          disabled={statusMutation.isPending}
+        />
+      ),
     },
     {
       key: 'createdAt',
@@ -232,6 +206,7 @@ function SuggestionsContent() {
               <div className="flex gap-2 flex-wrap" role="group" aria-label="상태 변경 버튼">
                 {(Object.keys(statusConfig) as SuggestionStatus[]).map((status) => {
                   const config = statusConfig[status];
+                  const Icon = config.icon;
                   const isActive = selectedSuggestion.status === status;
                   return (
                     <button
@@ -241,17 +216,12 @@ function SuggestionsContent() {
                       }
                       disabled={statusMutation.isPending}
                       aria-pressed={isActive}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                        ${isActive
-                          ? 'ring-2 ring-offset-2 ring-primary-500'
-                          : 'hover:bg-gray-100'
-                        }
-                        ${status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                        ${status === 'in_review' ? 'bg-blue-100 text-blue-800' : ''}
-                        ${status === 'resolved' ? 'bg-green-100 text-green-800' : ''}
-                        ${status === 'rejected' ? 'bg-gray-200 text-gray-800' : ''}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                        ${config.bg} ${config.text}
+                        ${isActive ? 'ring-2 ring-offset-2 ring-primary-500' : 'hover:opacity-80'}
                       `}
                     >
+                      <Icon className="w-4 h-4" />
                       {config.label}
                     </button>
                   );
