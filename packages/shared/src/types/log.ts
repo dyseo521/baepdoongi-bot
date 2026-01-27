@@ -57,6 +57,9 @@ export type LogType =
   | 'DM_SENT' // DM 전송 (일반)
   | 'DM_WELCOME' // 환영 DM 전송
   | 'DM_ERROR' // DM 전송 실패
+  | 'BULK_DM_START' // 단체 DM 시작
+  | 'BULK_DM_COMPLETE' // 단체 DM 완료
+  | 'BULK_DM_FAILED' // 단체 DM 실패
   // RAG 관련
   | 'RAG_QUERY' // RAG 질문
   | 'RAG_RESPONSE' // RAG 응답 완료
@@ -107,6 +110,9 @@ export const LOG_TYPE_LABELS: Record<LogType, string> = {
   DM_SENT: 'DM 전송',
   DM_WELCOME: '환영 DM',
   DM_ERROR: 'DM 전송 실패',
+  BULK_DM_START: '단체 DM 시작',
+  BULK_DM_COMPLETE: '단체 DM 완료',
+  BULK_DM_FAILED: '단체 DM 실패',
   // RAG 관련
   RAG_QUERY: 'RAG 질문',
   RAG_RESPONSE: 'RAG 응답',
