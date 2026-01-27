@@ -5,6 +5,8 @@ export { Button } from './button';
 export { Modal } from './modal';
 export { ConfirmModal } from './confirm-modal';
 export { StatusDropdown, statusConfig } from './status-dropdown';
+export { EmojiPickerButton } from './emoji-picker-button';
+export { RichTextEditor } from './rich-text-editor';
 export {
   Skeleton,
   SkeletonText,
