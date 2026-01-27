@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MapPin, Clock, Send, CheckCircle, Trash2, Pencil } from 'lucide-react';
+import { Plus, MapPin, Clock, Send, CheckCircle, Trash2, Pencil, Users, Edit3 } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, EventsPageSkeleton } from '@/components/ui';
-import { AnnounceModal, CreateEventModal, EditEventModal } from '@/components/events';
+import { AnnounceModal, CreateEventModal, EditEventModal, RSVPListModal } from '@/components/events';
 import { fetchEvents, announceEvent, deleteEvent, createEvent, updateEvent } from '@/lib/api';
 import type { Event, EventResponseOption, EventType } from '@baepdoongi/shared';
 
@@ -37,6 +37,8 @@ function EventsContent() {
   const [isAnnounceModalOpen, setIsAnnounceModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isRSVPModalOpen, setIsRSVPModalOpen] = useState(false);
+  const [announceMode, setAnnounceMode] = useState<'create' | 'edit'>('create');
 
   const { data: events = [], isLoading, isError, error } = useQuery<Event[]>({
     queryKey: ['events'],
@@ -159,9 +161,15 @@ function EventsContent() {
     });
   };
 
-  const openAnnounceModal = (event: Event) => {
+  const openAnnounceModal = (event: Event, mode: 'create' | 'edit' = 'create') => {
     setSelectedEvent(event);
+    setAnnounceMode(mode);
     setIsAnnounceModalOpen(true);
+  };
+
+  const openRSVPModal = (event: Event) => {
+    setSelectedEvent(event);
+    setIsRSVPModalOpen(true);
   };
 
   const columns = [
@@ -221,18 +229,35 @@ function EventsContent() {
       header: '액션',
       render: (event: Event) => (
         <div className="flex items-center gap-2">
-          {event.announcement && (
-            <Badge variant="success">
-              <CheckCircle className="w-3 h-3 mr-1" />
-              공지됨
-            </Badge>
-          )}
-          {!event.announcement && (
+          {event.announcement ? (
+            <>
+              {/* 공지됨 배지 - 클릭하면 공지 수정 모달 열림 */}
+              <button
+                type="button"
+                onClick={() => openAnnounceModal(event, 'edit')}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
+                title="클릭하여 공지 수정"
+              >
+                <CheckCircle className="w-3 h-3" />
+                공지됨
+                <Edit3 className="w-3 h-3 ml-0.5" />
+              </button>
+              {/* RSVP 확인 버튼 */}
+              <Button
+                size="sm"
+                variant="secondary"
+                leftIcon={<Users className="w-3 h-3" />}
+                onClick={() => openRSVPModal(event)}
+              >
+                응답 확인
+              </Button>
+            </>
+          ) : (
             <Button
               size="sm"
               variant="secondary"
               leftIcon={<Send className="w-3 h-3" />}
-              onClick={() => openAnnounceModal(event)}
+              onClick={() => openAnnounceModal(event, 'create')}
               disabled={event.status === 'cancelled'}
             >
               Slack 공지
@@ -291,6 +316,11 @@ function EventsContent() {
         onClose={() => setIsAnnounceModalOpen(false)}
         event={selectedEvent}
         onConfirm={handleAnnounce}
+        mode={announceMode}
+        onEdit={async () => {
+          // edit 모드에서는 이벤트 업데이트가 필요없음 (이미 EditEventModal에서 처리)
+          // 모달을 닫기만 하면 됨
+        }}
       />
 
       {/* 이벤트 생성 모달 */}
@@ -306,6 +336,13 @@ function EventsContent() {
         onClose={() => setIsEditModalOpen(false)}
         event={selectedEvent}
         onConfirm={handleEdit}
+      />
+
+      {/* RSVP 목록 모달 */}
+      <RSVPListModal
+        isOpen={isRSVPModalOpen}
+        onClose={() => setIsRSVPModalOpen(false)}
+        event={selectedEvent}
       />
     </div>
   );
