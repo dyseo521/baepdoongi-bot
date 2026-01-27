@@ -6,26 +6,6 @@ IGRUS 동아리 운영 자동화를 위한 Slack 봇 및 관리자 대시보드
 
 ![Architecture](./generated-diagrams/baepdoongi-architecture.png)
 
-### RAG 파이프라인
-
-```
-사용자 질문 (@뱁둥이)
-    ↓
-app_mention 이벤트 → "생각 중..." 즉시 응답
-    ↓
-SQS 큐 (baepdoongi-rag-queue)
-    ↓
-RAG Lambda → Bedrock RetrieveAndGenerate
-    ↓
-Slack 메시지 업데이트
-```
-
-| 항목 | 값 |
-|------|-----|
-| Knowledge Base ID | `XMRRFE6B29` |
-| 임베딩 모델 | Titan Embeddings G2 v2.0 (1024차원) |
-| 응답 모델 | Claude Haiku 4.5 (Global CRIS) |
-| 벡터 저장소 | S3 Vectors |
 
 ## 기술 스택
 
@@ -200,12 +180,3 @@ Secrets Manager에서 관리:
 | `07-캠퍼스-시설.md` | 캠퍼스 시설 가이드 |
 | `08-학사-꿀팁.md` | 학사제도 꿀팁 |
 
-### 문서 동기화
-
-```bash
-# S3 업로드
-npx tsx scripts/setup-knowledge-base.ts
-
-# AWS Console에서 Knowledge Base Sync 실행
-# https://console.aws.amazon.com/bedrock/home?region=ap-northeast-2#/knowledge-bases/XMRRFE6B29
-```
