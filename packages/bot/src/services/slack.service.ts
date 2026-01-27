@@ -247,7 +247,7 @@ export function buildEventAnnouncementBlocks(
   event: Event,
   responseOptions: EventResponseOption[],
   responseCounts?: Record<string, number>,
-  _allowMultipleSelection?: boolean,
+  allowMultipleSelection?: boolean,
   _userId?: string,
   _userSelections?: string[]
 ): unknown[] {
@@ -268,7 +268,10 @@ export function buildEventAnnouncementBlocks(
     const emoji = opt.emoji || '';
     return `${emoji} ${opt.label}: ${count}명`;
   });
-  const statusText = statusParts.join(' | ');
+  let statusText = statusParts.join(' | ');
+  if (allowMultipleSelection) {
+    statusText += ' | (중복 선택 가능)';
+  }
 
   const blocks: unknown[] = [
     {

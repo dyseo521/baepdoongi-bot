@@ -375,7 +375,7 @@ async function handleAnnounceEvent(
     }
 
     // 메시지 전송
-    const blocks = buildEventAnnouncementBlocks(eventItem, responseOptions);
+    const blocks = buildEventAnnouncementBlocks(eventItem, responseOptions, undefined, allowMultipleSelection);
     const result = await client.chat.postMessage({
       channel: channelId,
       text: `📅 이벤트 공지: ${eventItem.title}`,
