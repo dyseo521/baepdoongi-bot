@@ -147,6 +147,9 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
 
       const { jobId, eventId, userIds, templateId, customMessage, eventTitle, eventDatetime, eventLocation } = message;
 
+      // 작업 시작 - status를 'processing'으로 업데이트
+      await updateBulkDMJobProgress(jobId, 0, 0, 'processing');
+
       // 메시지 렌더링
       const renderedMessage = renderTemplate(templateId, customMessage, eventTitle, eventDatetime, eventLocation);
 

@@ -780,10 +780,23 @@ export async function updateBulkDMJobProgress(
   jobId: string,
   sentCount: number,
   failedCount: number,
-  errors?: Array<{ userId: string; error: string }>
+  statusOrErrors?: 'processing' | Array<{ userId: string; error: string }>
 ): Promise<void> {
-  const updateExpression = 'SET sentCount = :sent, failedCount = :failed, updatedAt = :now' +
-    (errors ? ', errors = :errors' : '');
+  const isStatus = statusOrErrors === 'processing';
+  const errors = isStatus ? undefined : statusOrErrors;
+
+  let updateExpression = 'SET sentCount = :sent, failedCount = :failed, updatedAt = :now';
+  if (isStatus) {
+    updateExpression += ', #status = :status';
+  }
+  if (errors && errors.length > 0) {
+    updateExpression += ', errors = :errors';
+  }
+
+  const expressionAttributeNames: Record<string, string> = {};
+  if (isStatus) {
+    expressionAttributeNames['#status'] = 'status';
+  }
 
   const expressionAttributeValues: Record<string, unknown> = {
     ':sent': sentCount,
@@ -791,7 +804,11 @@ export async function updateBulkDMJobProgress(
     ':now': new Date().toISOString(),
   };
 
-  if (errors) {
+  if (isStatus) {
+    expressionAttributeValues[':status'] = 'processing';
+  }
+
+  if (errors && errors.length > 0) {
     expressionAttributeValues[':errors'] = errors;
   }
 
@@ -803,6 +820,9 @@ export async function updateBulkDMJobProgress(
         SK: 'DETAIL',
       },
       UpdateExpression: updateExpression,
+      ...(Object.keys(expressionAttributeNames).length > 0 && {
+        ExpressionAttributeNames: expressionAttributeNames,
+      }),
       ExpressionAttributeValues: expressionAttributeValues,
     })
   );
