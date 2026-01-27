@@ -14,6 +14,33 @@ interface RichTextEditorProps {
   id?: string;
 }
 
+interface FormatRegion {
+  start: number; // 마커 시작 위치
+  end: number; // 마커 끝 위치
+  innerStart: number; // 내용 시작
+  innerEnd: number; // 내용 끝
+}
+
+// 포맷 영역 찾기 (볼드: *, 이탈릭: _)
+function findFormatRegions(text: string, marker: string): FormatRegion[] {
+  const regions: FormatRegion[] = [];
+  const escapedMarker = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`${escapedMarker}([^${escapedMarker}\\n]+)${escapedMarker}`, 'g');
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const innerContent = match[1];
+    if (innerContent !== undefined) {
+      regions.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        innerStart: match.index + 1,
+        innerEnd: match.index + 1 + innerContent.length,
+      });
+    }
+  }
+  return regions;
+}
+
 export function RichTextEditor({
   value,
   onChange,
@@ -26,7 +53,6 @@ export function RichTextEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [hasSelection, setHasSelection] = useState(false);
 
   // Slack mrkdwn → HTML 변환 (실시간 미리보기용)
   const formattedHtml = useMemo(() => {
@@ -53,54 +79,55 @@ export function RichTextEditor({
     return html;
   }, [value]);
 
-  // Wrap selected text with markers
-  const wrapSelection = useCallback(
-    (before: string, after: string) => {
+  // 스마트 포맷 토글 (커서/선택이 포맷 영역 내부면 해제, 아니면 적용)
+  const smartToggleFormat = useCallback(
+    (marker: string) => {
       const textarea = textareaRef.current;
       if (!textarea) return;
 
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-      const selectedText = value.substring(start, end);
+      const regions = findFormatRegions(value, marker);
 
-      // If text is already wrapped, unwrap it
-      const textBefore = value.substring(start - before.length, start);
-      const textAfter = value.substring(end, end + after.length);
+      // 선택/커서가 포맷 영역 내부인지 확인
+      const containingRegion = regions.find(
+        (r) => start >= r.innerStart && end <= r.innerEnd
+      );
 
-      if (textBefore === before && textAfter === after) {
-        // Unwrap
+      if (containingRegion) {
+        // 포맷 제거: 해당 영역의 마커 제거
+        const innerText = value.substring(
+          containingRegion.innerStart,
+          containingRegion.innerEnd
+        );
         const newValue =
-          value.substring(0, start - before.length) +
-          selectedText +
-          value.substring(end + after.length);
+          value.substring(0, containingRegion.start) +
+          innerText +
+          value.substring(containingRegion.end);
         onChange(newValue);
-        // Restore selection
+
+        // 커서 위치 조정 (앞의 마커 제거로 1 감소)
         setTimeout(() => {
           textarea.focus();
-          textarea.setSelectionRange(start - before.length, end - before.length);
+          textarea.setSelectionRange(start - 1, end - 1);
         }, 0);
       } else {
-        // Wrap
+        // 포맷 추가
+        const selectedText = value.substring(start, end);
         const newValue =
           value.substring(0, start) +
-          before +
+          marker +
           selectedText +
-          after +
+          marker +
           value.substring(end);
         onChange(newValue);
-        // Restore selection including markers
+
         setTimeout(() => {
           textarea.focus();
           if (selectedText) {
-            textarea.setSelectionRange(
-              start + before.length,
-              end + before.length
-            );
+            textarea.setSelectionRange(start + 1, end + 1);
           } else {
-            textarea.setSelectionRange(
-              start + before.length,
-              start + before.length
-            );
+            textarea.setSelectionRange(start + 1, start + 1);
           }
         }, 0);
       }
@@ -109,12 +136,12 @@ export function RichTextEditor({
   );
 
   const handleBold = useCallback(() => {
-    wrapSelection('*', '*');
-  }, [wrapSelection]);
+    smartToggleFormat('*');
+  }, [smartToggleFormat]);
 
   const handleItalic = useCallback(() => {
-    wrapSelection('_', '_');
-  }, [wrapSelection]);
+    smartToggleFormat('_');
+  }, [smartToggleFormat]);
 
   const handleEmojiClick = useCallback(
     (emojiData: EmojiClickData) => {
@@ -160,20 +187,6 @@ export function RichTextEditor({
     if (overlay) {
       overlay.scrollTop = e.currentTarget.scrollTop;
     }
-  }, []);
-
-  // 텍스트 선택 상태 감지
-  const handleSelect = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      const hasActiveSelection = textarea.selectionStart !== textarea.selectionEnd;
-      setHasSelection(hasActiveSelection);
-    }
-  }, []);
-
-  // 포커스 해제 시 선택 상태 리셋
-  const handleBlur = useCallback(() => {
-    setHasSelection(false);
   }, []);
 
   // Calculate height based on rows
@@ -302,29 +315,27 @@ export function RichTextEditor({
 
       {/* Editor container with overlay */}
       <div className="relative border border-gray-300 rounded-b-lg overflow-hidden">
-        {/* Formatted overlay (선택 중이 아닐 때만 표시) */}
-        {!hasSelection && (
-          <div
-            className={clsx(
-              'rich-text-overlay absolute inset-0 px-3 py-2',
-              'text-sm text-gray-900 leading-relaxed',
-              'whitespace-pre-wrap break-words',
-              'pointer-events-none overflow-auto',
-              'bg-white',
-              'font-[system-ui]'
-            )}
-            style={{ height: textareaHeight }}
-            aria-hidden="true"
-          >
-            {formattedHtml ? (
-              <div dangerouslySetInnerHTML={{ __html: formattedHtml }} />
-            ) : (
-              <span className="text-gray-400">{placeholder}</span>
-            )}
-          </div>
-        )}
+        {/* Formatted overlay (항상 표시) */}
+        <div
+          className={clsx(
+            'rich-text-overlay absolute inset-0 px-3 py-2',
+            'text-sm text-gray-900 leading-relaxed',
+            'whitespace-pre-wrap break-words',
+            'pointer-events-none overflow-auto',
+            'bg-white',
+            'font-[system-ui]'
+          )}
+          style={{ height: textareaHeight }}
+          aria-hidden="true"
+        >
+          {formattedHtml ? (
+            <div dangerouslySetInnerHTML={{ __html: formattedHtml }} />
+          ) : (
+            <span className="text-gray-400">{placeholder}</span>
+          )}
+        </div>
 
-        {/* Textarea (선택 중일 때는 텍스트 표시, 아닐 때는 투명) */}
+        {/* Textarea (항상 투명, 선택 영역도 숨김) */}
         <textarea
           ref={textareaRef}
           id={id}
@@ -332,9 +343,6 @@ export function RichTextEditor({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onScroll={handleScroll}
-          onSelect={handleSelect}
-          onBlur={handleBlur}
-          placeholder={hasSelection ? '' : ''}
           rows={rows}
           className={clsx(
             'relative w-full px-3 py-2',
@@ -342,10 +350,9 @@ export function RichTextEditor({
             'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
             'resize-none',
             'font-[system-ui]',
-            // 선택 중일 때는 텍스트 보이게, 아닐 때는 투명
-            hasSelection
-              ? 'text-gray-900 bg-white'
-              : 'text-transparent caret-gray-900 bg-transparent'
+            // 항상 투명 + 선택 영역도 숨김
+            'text-transparent caret-gray-900 bg-transparent',
+            'selection:bg-transparent selection:text-transparent'
           )}
           style={{ height: textareaHeight }}
         />
