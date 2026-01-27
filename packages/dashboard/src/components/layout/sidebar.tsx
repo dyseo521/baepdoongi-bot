@@ -81,7 +81,10 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-slate-800 text-white flex flex-col">
       {/* Logo */}
-      <div className="p-6 border-b border-slate-700 flex items-center gap-3">
+      <Link
+        href="/dashboard"
+        className="p-6 border-b border-slate-700 flex items-center gap-3 hover:bg-slate-700 transition-colors"
+      >
         <img
           src="/images/logo.webp"
           alt="뱁둥이 로고"
@@ -89,8 +92,8 @@ export function Sidebar() {
           height={48}
           className="rounded-lg"
         />
-        <h1 className="text-2xl font-bold">뱁둥이</h1>
-      </div>
+        <h1 className="text-3xl font-bold">뱁둥이</h1>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 p-4">
