@@ -1,7 +1,7 @@
 'use client';
 
 import { clsx } from 'clsx';
-import { Bold, Eye, EyeOff, HelpCircle, Italic, Smile } from 'lucide-react';
+import { Bold, HelpCircle, Italic, Smile } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 
@@ -26,11 +26,10 @@ export function RichTextEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
 
-  // Slack mrkdwn → HTML 변환
-  const formattedPreview = useMemo(() => {
-    if (!value) return null;
+  // Slack mrkdwn → HTML 변환 (실시간 미리보기용)
+  const formattedHtml = useMemo(() => {
+    if (!value) return '';
 
     let html = value
       // HTML 엔티티 이스케이프
@@ -44,7 +43,7 @@ export function RichTextEditor({
       // Strikethrough: ~text~
       .replace(/~([^~\n]+)~/g, '<del class="line-through">$1</del>')
       // Inline code: `code`
-      .replace(/`([^`\n]+)`/g, '<code class="bg-gray-100 px-1 rounded text-sm font-mono">$1</code>')
+      .replace(/`([^`\n]+)`/g, '<code class="bg-gray-200 px-0.5 rounded text-sm font-mono">$1</code>')
       // Mentions: @channel, @here, @everyone
       .replace(/(@channel|@here|@everyone)/g, '<span class="bg-yellow-100 text-yellow-800 px-0.5 rounded">$1</span>')
       // Line breaks
@@ -154,6 +153,17 @@ export function RichTextEditor({
     [handleBold, handleItalic]
   );
 
+  // Sync scroll between textarea and overlay
+  const handleScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
+    const overlay = containerRef.current?.querySelector('.rich-text-overlay');
+    if (overlay) {
+      overlay.scrollTop = e.currentTarget.scrollTop;
+    }
+  }, []);
+
+  // Calculate height based on rows
+  const textareaHeight = `${rows * 1.5 + 1}rem`;
+
   return (
     <div ref={containerRef} className={clsx('relative', className)}>
       {/* Toolbar */}
@@ -218,26 +228,6 @@ export function RichTextEditor({
           )}
         </div>
         <div className="flex-1" />
-        {/* 미리보기 토글 버튼 */}
-        <button
-          type="button"
-          onClick={() => setShowPreview(!showPreview)}
-          className={clsx(
-            'p-1.5 rounded hover:bg-gray-200 transition-colors flex items-center gap-1',
-            'focus:outline-none focus:ring-2 focus:ring-primary-500',
-            showPreview && 'bg-gray-200'
-          )}
-          title={showPreview ? '미리보기 닫기' : '미리보기'}
-          aria-label={showPreview ? '미리보기 닫기' : '미리보기'}
-          aria-pressed={showPreview}
-        >
-          {showPreview ? (
-            <EyeOff className="w-4 h-4 text-gray-600" />
-          ) : (
-            <Eye className="w-4 h-4 text-gray-600" />
-          )}
-          <span className="text-xs text-gray-600">미리보기</span>
-        </button>
         <div className="relative">
           <button
             type="button"
@@ -295,41 +285,49 @@ export function RichTextEditor({
         </div>
       </div>
 
-      {/* Textarea */}
-      <textarea
-        ref={textareaRef}
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        rows={rows}
-        className={clsx(
-          'w-full px-3 py-2 border border-gray-300',
-          showPreview ? 'rounded-none border-b-0' : 'rounded-b-lg',
-          'text-sm text-gray-900 placeholder-gray-400',
-          'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
-          'resize-none'
-        )}
-      />
-
-      {/* 실시간 서식 미리보기 */}
-      {showPreview && (
-        <div className="p-3 border border-gray-300 border-t-0 rounded-b-lg bg-gray-50">
-          <div className="text-xs text-gray-500 mb-2 flex items-center gap-1">
-            <Eye className="w-3 h-3" />
-            미리보기
-          </div>
-          {formattedPreview ? (
-            <div
-              className="text-sm text-gray-900 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: formattedPreview }}
-            />
+      {/* Editor container with overlay */}
+      <div className="relative border border-gray-300 rounded-b-lg overflow-hidden">
+        {/* Formatted overlay (behind textarea) */}
+        <div
+          className={clsx(
+            'rich-text-overlay absolute inset-0 px-3 py-2',
+            'text-sm text-gray-900 leading-relaxed',
+            'whitespace-pre-wrap break-words',
+            'pointer-events-none overflow-auto',
+            'bg-white'
+          )}
+          style={{ height: textareaHeight }}
+          aria-hidden="true"
+        >
+          {formattedHtml ? (
+            <div dangerouslySetInnerHTML={{ __html: formattedHtml }} />
           ) : (
-            <div className="text-sm text-gray-400 italic">내용이 없습니다</div>
+            <span className="text-gray-400">{placeholder}</span>
           )}
         </div>
-      )}
+
+        {/* Transparent textarea (in front, for user input) */}
+        <textarea
+          ref={textareaRef}
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onScroll={handleScroll}
+          placeholder=""
+          rows={rows}
+          className={clsx(
+            'relative w-full px-3 py-2',
+            'text-sm leading-relaxed',
+            'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
+            'resize-none',
+            // Make text transparent but keep caret visible
+            'text-transparent caret-gray-900',
+            'bg-transparent'
+          )}
+          style={{ height: textareaHeight }}
+        />
+      </div>
 
       {/* Mention preview */}
       {value && /(@channel|@here|@everyone)/.test(value) && (
