@@ -127,6 +127,7 @@ export class BotStack extends cdk.Stack {
     });
 
     // DM Worker Lambda (단체 DM 발송)
+    // Note: Rate limiting은 SQS batchSize: 1과 코드 내 딜레이로 처리됨
     this.dmWorkerLambda = new lambda.Function(this, 'DmWorkerLambda', {
       functionName: 'baepdoongi-dm-worker',
       description: '단체 DM 발송 처리',
@@ -139,7 +140,6 @@ export class BotStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(5), // 100명 발송 시 약 2분 소요
       environment: commonEnv,
       architecture: lambda.Architecture.ARM_64,
-      reservedConcurrentExecutions: 1, // Rate Limiting 준수를 위해 동시 실행 제한
     });
 
     // SQS를 RAG Lambda의 이벤트 소스로 연결
