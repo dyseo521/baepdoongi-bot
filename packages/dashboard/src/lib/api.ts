@@ -16,6 +16,7 @@ import type {
   SlackChannel,
   EventResponseOption,
   AnnounceEventResponse,
+  RSVPListResponse,
 } from '@baepdoongi/shared';
 
 const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || '/api';
@@ -188,4 +189,9 @@ export async function announceEvent(
     method: 'POST',
     body: JSON.stringify({ channelId, responseOptions }),
   });
+}
+
+// Event RSVPs
+export async function fetchEventRSVPs(eventId: string): Promise<RSVPListResponse> {
+  return fetchAPI<RSVPListResponse>(`/events/${eventId}/rsvps`);
 }

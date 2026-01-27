@@ -18,10 +18,11 @@ import {
   getUpcomingEvents,
   getEventRSVPs,
   saveLog,
+  listMembers,
 } from '../../services/db.service.js';
 import { buildEventAnnouncementBlocks } from '../../services/slack.service.js';
 import { getSecrets } from '../../services/secrets.service.js';
-import type { Event, EventAnnouncement, EventResponseOption } from '@baepdoongi/shared';
+import type { Event, EventAnnouncement, EventResponseOption, RSVPWithMember, RSVPListResponse } from '@baepdoongi/shared';
 import { randomUUID } from 'crypto';
 
 // DynamoDB에서 삭제
@@ -62,6 +63,12 @@ export async function handleEvents(
   const announceMatch = subPath.match(/^\/([^/]+)\/announce$/);
   if (announceMatch?.[1] && method === 'POST') {
     return handleAnnounceEvent(event, announceMatch[1]);
+  }
+
+  // /api/events/:eventId/rsvps
+  const rsvpsMatch = subPath.match(/^\/([^/]+)\/rsvps$/);
+  if (rsvpsMatch?.[1] && method === 'GET') {
+    return handleGetEventRSVPs(rsvpsMatch[1]);
   }
 
   // /api/events/:eventId
@@ -375,5 +382,55 @@ async function handleAnnounceEvent(
   } catch (error) {
     console.error('[Events API] Announce Error:', error);
     return createErrorResponse(500, 'Failed to announce event');
+  }
+}
+
+async function handleGetEventRSVPs(eventId: string): Promise<APIGatewayProxyResult> {
+  try {
+    const eventItem = await getEvent(eventId);
+
+    if (!eventItem) {
+      return createErrorResponse(404, '이벤트를 찾을 수 없습니다');
+    }
+
+    const rsvps = await getEventRSVPs(eventId);
+    const members = await listMembers();
+
+    // 회원 정보 맵 생성
+    const memberMap = new Map(
+      members.map((m) => [m.slackId, { name: m.displayName || m.realName, imageUrl: m.imageUrl }])
+    );
+
+    // RSVP에 회원 정보 추가
+    const rsvpsWithMember: RSVPWithMember[] = rsvps.map((rsvp) => {
+      const member = memberMap.get(rsvp.memberId);
+      return {
+        ...rsvp,
+        memberName: member?.name,
+        memberImageUrl: member?.imageUrl,
+      };
+    });
+
+    // 응답 시간순 정렬 (최신순)
+    rsvpsWithMember.sort(
+      (a, b) => new Date(b.respondedAt).getTime() - new Date(a.respondedAt).getTime()
+    );
+
+    // 옵션별 응답 수 요약
+    const summary: Record<string, number> = {};
+    for (const rsvp of rsvps) {
+      const optionId = rsvp.responseOptionId || (rsvp.status === 'attending' ? 'attend' : 'absent');
+      summary[optionId] = (summary[optionId] || 0) + 1;
+    }
+
+    const response: RSVPListResponse = {
+      rsvps: rsvpsWithMember,
+      summary,
+    };
+
+    return createResponse(200, response);
+  } catch (error) {
+    console.error('[Events API] GetRSVPs Error:', error);
+    return createErrorResponse(500, 'Failed to fetch RSVPs');
   }
 }
