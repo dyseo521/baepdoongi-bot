@@ -15,7 +15,7 @@ import type {
   ViewSubmitAction,
 } from '@slack/bolt';
 import { saveRSVP, getEvent, getEventRSVPs, getRSVP, saveLog } from '../../services/db.service.js';
-import { buildEventAnnouncementBlocks } from '../../services/slack.service.js';
+import { buildEventAnnouncementBlocks, buildRespondentsModal } from '../../services/slack.service.js';
 import { generateId } from '../../utils/id.js';
 import type { RSVPStatus, EventResponseOption, RSVP, Event } from '@baepdoongi/shared';
 
@@ -453,5 +453,50 @@ export async function handleEventResponseInputSubmit({
     }
   } catch (error) {
     console.error('이벤트 응답 모달 처리 실패:', error);
+  }
+}
+
+/**
+ * 응답자 보기 버튼 핸들러
+ */
+export async function handleViewRespondents({
+  ack,
+  body,
+  client,
+}: AllMiddlewareArgs & SlackActionMiddlewareArgs<BlockAction>): Promise<void> {
+  await ack();
+
+  try {
+    const action = body.actions[0];
+    if (!action || action.type !== 'button') {
+      return;
+    }
+
+    const eventId = action.value;
+    if (!eventId) {
+      console.error('이벤트 ID가 없습니다.');
+      return;
+    }
+
+    // 이벤트 정보와 RSVP 목록 조회
+    const [event, rsvps] = await Promise.all([
+      getEvent(eventId),
+      getEventRSVPs(eventId),
+    ]);
+
+    if (!event) {
+      console.error(`이벤트를 찾을 수 없습니다: ${eventId}`);
+      return;
+    }
+
+    // 모달 생성 및 열기
+    const modal = buildRespondentsModal(event, rsvps);
+
+    await client.views.open({
+      trigger_id: body.trigger_id,
+      view: modal,
+    });
+  } catch (error) {
+    console.error('응답자 보기 모달 처리 실패:', error);
   }
 }

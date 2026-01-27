@@ -4,8 +4,8 @@
  * 자주 사용되는 Slack API 호출을 래핑하여 재사용성을 높입니다.
  */
 
-import type { WebClient } from '@slack/web-api';
-import type { Event, EventResponseOption, SlackChannel } from '@baepdoongi/shared';
+import type { WebClient, View } from '@slack/web-api';
+import type { Event, EventResponseOption, SlackChannel, RSVP } from '@baepdoongi/shared';
 import { formatEventDateTimeForDisplay } from '../utils/date-formatter.js';
 
 /** 사용자 프로필 정보 */
@@ -321,16 +321,28 @@ export function buildEventAnnouncementBlocks(
     },
     {
       type: 'actions',
-      elements: sortedOptions.map((opt) => ({
-        type: 'button',
-        text: {
-          type: 'plain_text',
-          text: `${opt.emoji || ''} ${opt.label}`.trim(),
-          emoji: true,
+      elements: [
+        ...sortedOptions.map((opt) => ({
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: `${opt.emoji || ''} ${opt.label}`.trim(),
+            emoji: true,
+          },
+          value: `${event.eventId}:${opt.optionId}`,
+          action_id: `event_response_${opt.optionId}`,
+        })),
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '👥 응답자 보기',
+            emoji: true,
+          },
+          value: event.eventId,
+          action_id: 'view_respondents',
         },
-        value: `${event.eventId}:${opt.optionId}`,
-        action_id: `event_response_${opt.optionId}`,
-      })),
+      ],
     }
   );
 
@@ -370,4 +382,105 @@ export async function sendEventAnnouncement(
     console.error('이벤트 공지 전송 실패:', error);
     return null;
   }
+}
+
+/**
+ * 응답자 보기 모달용 Block Kit 블록을 생성합니다.
+ */
+export function buildRespondentsModal(
+  event: Event,
+  rsvps: RSVP[]
+): View {
+  const responseOptions = event.announcement?.responseOptions || [];
+  const sortedOptions = [...responseOptions].sort((a, b) => a.order - b.order);
+
+  // 옵션별 응답자 그룹핑
+  const respondentsByOption: Record<string, string[]> = {};
+
+  // 모든 옵션에 대해 빈 배열로 초기화
+  for (const opt of sortedOptions) {
+    respondentsByOption[opt.optionId] = [];
+  }
+
+  // RSVP 데이터로 응답자 그룹핑
+  for (const rsvp of rsvps) {
+    // 중복 선택 모드인 경우 responseOptionIds 배열 사용
+    if (rsvp.responseOptionIds && rsvp.responseOptionIds.length > 0) {
+      for (const optionId of rsvp.responseOptionIds) {
+        respondentsByOption[optionId]?.push(rsvp.memberId);
+      }
+    } else if (rsvp.responseOptionId) {
+      // 단일 선택 모드
+      respondentsByOption[rsvp.responseOptionId]?.push(rsvp.memberId);
+    }
+  }
+
+  const blocks: View['blocks'] = [
+    {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: '📋 응답 현황',
+        emoji: true,
+      },
+    },
+    { type: 'divider' },
+  ];
+
+  // 각 옵션별 응답자 섹션 추가
+  for (const opt of sortedOptions) {
+    const respondents = respondentsByOption[opt.optionId] || [];
+    const emoji = opt.emoji || '';
+    const label = opt.label;
+    const count = respondents.length;
+
+    // 옵션 헤더
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*${emoji} ${label} (${count}명)*`,
+      },
+    });
+
+    // 응답자 목록 (멘션 형식)
+    if (respondents.length > 0) {
+      const mentionText = respondents.map((id) => `<@${id}>`).join(' ');
+      blocks.push({
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: mentionText,
+          },
+        ],
+      });
+    } else {
+      blocks.push({
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: '_응답자 없음_',
+          },
+        ],
+      });
+    }
+
+    blocks.push({ type: 'divider' });
+  }
+
+  return {
+    type: 'modal',
+    title: {
+      type: 'plain_text',
+      text: event.title.slice(0, 24), // 모달 제목 최대 24자
+      emoji: true,
+    },
+    close: {
+      type: 'plain_text',
+      text: '닫기',
+    },
+    blocks,
+  };
 }
