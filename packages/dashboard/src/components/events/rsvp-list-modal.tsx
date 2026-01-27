@@ -1,7 +1,7 @@
 'use client';
 
 import { clsx } from 'clsx';
-import { Users, Clock, MessageSquare, Check, History } from 'lucide-react';
+import { Users, Clock, MessageSquare, Check, History, X } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Modal, Skeleton } from '../ui';
@@ -34,6 +34,8 @@ function formatDateTime(isoString: string): string {
 
 /** DM 발송 이력 섹션 */
 function DMHistorySection({ eventId }: { eventId: string }) {
+  const [selectedJob, setSelectedJob] = useState<BulkDMJob | null>(null);
+
   const { data: jobs, isLoading } = useQuery({
     queryKey: ['dm-history', eventId],
     queryFn: () => getEventDMHistory(eventId),
@@ -42,7 +44,7 @@ function DMHistorySection({ eventId }: { eventId: string }) {
 
   if (isLoading) {
     return (
-      <div className="mt-4 pt-4 border-t border-gray-200">
+      <div className="mt-4 pt-4 border-t border-gray-200 pl-1">
         <Skeleton className="w-32 h-4 mb-2" />
         <Skeleton className="w-full h-8" />
       </div>
@@ -52,14 +54,22 @@ function DMHistorySection({ eventId }: { eventId: string }) {
   if (!jobs || jobs.length === 0) return null;
 
   return (
-    <div className="mt-4 pt-4 border-t border-gray-200">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="mt-4 pt-4 border-t border-gray-200 pl-1">
+      <div className="flex items-center gap-2 mb-3 ml-1">
         <History className="w-4 h-4 text-gray-500" />
         <h4 className="text-sm font-medium text-gray-700">최근 DM 발송 이력</h4>
       </div>
       <div className="space-y-2">
         {jobs.map((job: BulkDMJob) => (
-          <div key={job.jobId} className="flex items-center justify-between text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+          <button
+            key={job.jobId}
+            type="button"
+            onClick={() => setSelectedJob(selectedJob?.jobId === job.jobId ? null : job)}
+            className={clsx(
+              'w-full flex items-center justify-between text-sm text-gray-600 rounded-lg px-3 py-2 transition-colors text-left',
+              selectedJob?.jobId === job.jobId ? 'bg-primary-50 ring-1 ring-primary-200' : 'bg-gray-50 hover:bg-gray-100'
+            )}
+          >
             <span className="font-medium">{getTemplateName(job.templateId)}</span>
             <span className={clsx(
               job.failedCount > 0 ? 'text-orange-600' : 'text-green-600'
@@ -70,9 +80,55 @@ function DMHistorySection({ eventId }: { eventId: string }) {
             <span className="text-gray-400">
               {job.completedAt ? formatDateTime(job.completedAt) : formatDateTime(job.createdAt)}
             </span>
-          </div>
+          </button>
         ))}
       </div>
+
+      {/* 선택된 작업 상세 정보 */}
+      {selectedJob && (
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h5 className="font-medium text-gray-800">{getTemplateName(selectedJob.templateId)} 상세</h5>
+            <button
+              type="button"
+              onClick={() => setSelectedJob(null)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <dl className="grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <dt className="text-gray-500">발송 대상</dt>
+              <dd className="font-medium text-gray-800">{selectedJob.totalCount}명</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">발송 성공</dt>
+              <dd className="font-medium text-green-600">{selectedJob.sentCount}명</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">발송 실패</dt>
+              <dd className={clsx('font-medium', selectedJob.failedCount > 0 ? 'text-red-600' : 'text-gray-600')}>
+                {selectedJob.failedCount}명
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">발송 일시</dt>
+              <dd className="font-medium text-gray-800">
+                {selectedJob.completedAt ? formatDateTime(selectedJob.completedAt) : formatDateTime(selectedJob.createdAt)}
+              </dd>
+            </div>
+            {selectedJob.customMessage && (
+              <div className="col-span-2">
+                <dt className="text-gray-500 mb-1">추가 메시지</dt>
+                <dd className="font-medium text-gray-800 bg-white p-2 rounded border border-gray-100 whitespace-pre-wrap">
+                  {selectedJob.customMessage}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
     </div>
   );
 }
@@ -102,10 +158,15 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
   // 첫 번째 탭을 기본 선택
   const currentTab = activeTab ?? responseOptions[0]?.optionId ?? null;
 
-  // 현재 탭의 RSVP 목록
+  // 현재 탭의 RSVP 목록 (중복 선택 모드 지원)
   const filteredRSVPs = useMemo(() => {
     if (!data?.rsvps) return [];
     return data.rsvps.filter((rsvp) => {
+      // 중복 선택 모드인 경우 responseOptionIds 배열 확인
+      if (rsvp.responseOptionIds && rsvp.responseOptionIds.length > 0) {
+        return rsvp.responseOptionIds.includes(currentTab ?? '');
+      }
+      // 단일 선택 모드
       const optionId = rsvp.responseOptionId || (rsvp.status === 'attending' ? 'attend' : 'absent');
       return optionId === currentTab;
     });

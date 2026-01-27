@@ -51,12 +51,14 @@ function EventsContent() {
       eventId,
       channelId,
       responseOptions,
+      allowMultipleSelection,
     }: {
       eventId: string;
       channelId: string;
       responseOptions: EventResponseOption[];
+      allowMultipleSelection: boolean;
     }) => {
-      return announceEvent(eventId, channelId, responseOptions);
+      return announceEvent(eventId, channelId, responseOptions, allowMultipleSelection);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
@@ -151,12 +153,13 @@ function EventsContent() {
     setIsEditModalOpen(true);
   };
 
-  const handleAnnounce = async (channelId: string, responseOptions: EventResponseOption[]) => {
+  const handleAnnounce = async (channelId: string, responseOptions: EventResponseOption[], allowMultipleSelection: boolean) => {
     if (!selectedEvent) return;
     await announceMutation.mutateAsync({
       eventId: selectedEvent.eventId,
       channelId,
       responseOptions,
+      allowMultipleSelection,
     });
   };
 

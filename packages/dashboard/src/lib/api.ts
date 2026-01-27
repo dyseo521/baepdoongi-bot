@@ -186,11 +186,12 @@ export async function fetchSlackChannels(): Promise<SlackChannel[]> {
 export async function announceEvent(
   eventId: string,
   channelId: string,
-  responseOptions: EventResponseOption[]
+  responseOptions: EventResponseOption[],
+  allowMultipleSelection?: boolean
 ): Promise<AnnounceEventResponse> {
   return fetchAPI<AnnounceEventResponse>(`/events/${eventId}/announce`, {
     method: 'POST',
-    body: JSON.stringify({ channelId, responseOptions }),
+    body: JSON.stringify({ channelId, responseOptions, allowMultipleSelection }),
   });
 }
 
