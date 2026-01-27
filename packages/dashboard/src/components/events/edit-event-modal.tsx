@@ -30,6 +30,14 @@ const eventTypes = [
   { value: 'other', label: '기타' },
 ];
 
+// 10분 단위 시간 옵션 생성
+const TIME_OPTIONS: string[] = [];
+for (let h = 0; h < 24; h++) {
+  for (let m = 0; m < 60; m += 10) {
+    TIME_OPTIONS.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+  }
+}
+
 export function EditEventModal({ isOpen, onClose, event, onConfirm }: EditEventModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -267,6 +275,7 @@ export function EditEventModal({ isOpen, onClose, event, onConfirm }: EditEventM
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
                 required={!isDateUndetermined}
               />
@@ -281,6 +290,7 @@ export function EditEventModal({ isOpen, onClose, event, onConfirm }: EditEventM
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
                   min={startDate}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
                   required={isMultiDay}
@@ -318,25 +328,33 @@ export function EditEventModal({ isOpen, onClose, event, onConfirm }: EditEventM
               <label htmlFor="edit-event-start-time" className="block text-sm font-medium text-gray-700 mb-1">
                 시작 시간
               </label>
-              <input
+              <select
                 id="edit-event-start-time"
-                type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
-              />
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="">시간 선택</option>
+                {TIME_OPTIONS.map((time) => (
+                  <option key={time} value={time}>{time}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label htmlFor="edit-event-end-time" className="block text-sm font-medium text-gray-700 mb-1">
                 종료 시간
               </label>
-              <input
+              <select
                 id="edit-event-end-time"
-                type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
-              />
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="">시간 선택</option>
+                {TIME_OPTIONS.map((time) => (
+                  <option key={time} value={time}>{time}</option>
+                ))}
+              </select>
             </div>
           </div>
         )}
