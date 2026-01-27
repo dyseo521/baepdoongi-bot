@@ -1,9 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Megaphone } from 'lucide-react';
+import { Eye, Megaphone } from 'lucide-react';
 import { Button, Modal, RichTextEditor } from '@/components/ui';
+import { formatEventDateTimeForDisplay } from '@/lib/utils';
 import type { Event, EventType } from '@baepdoongi/shared';
+
+// Slack mrkdwn을 HTML로 변환
+function formatSlackText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
+    .replace(/_([^_\n]+)_/g, '<em>$1</em>')
+    .replace(/~([^~\n]+)~/g, '<del>$1</del>')
+    .replace(/`([^`\n]+)`/g, '<code class="bg-gray-200 px-0.5 rounded text-sm font-mono">$1</code>')
+    .replace(/(@channel|@here|@everyone)/g, '<span class="bg-yellow-100 text-yellow-800 px-0.5 rounded">$1</span>')
+    .replace(/\n/g, '<br />');
+}
 
 const formatAnnouncedAt = (isoString: string): string => {
   const date = new Date(isoString);
@@ -401,6 +416,58 @@ export function EditEventModal({ isOpen, onClose, event, onConfirm }: EditEventM
             placeholder="이벤트 설명을 입력하세요 (Slack 서식 지원)"
             rows={4}
           />
+        </div>
+
+        {/* 미리보기 */}
+        <div className="border-t pt-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+            <Eye className="w-4 h-4" />
+            Slack 공지 미리보기
+          </label>
+          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <div className="space-y-3">
+              <div className="font-semibold text-lg">📅 {title || '(제목 없음)'}</div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-500">📍 장소</span>
+                  <div>{location || '미정'}</div>
+                </div>
+                <div>
+                  <span className="text-gray-500">🕐 일시</span>
+                  <div>
+                    {isDateUndetermined
+                      ? '미정'
+                      : formatEventDateTimeForDisplay({
+                          ...(startDate && { startDate }),
+                          ...(endDate && { endDate }),
+                          ...(startTime && { startTime }),
+                          ...(endTime && { endTime }),
+                          ...(isMultiDay !== undefined && { isMultiDay }),
+                          ...(hasTime !== undefined && { hasTime }),
+                        })}
+                  </div>
+                </div>
+              </div>
+              {description && (
+                <div
+                  className="text-sm text-gray-700"
+                  dangerouslySetInnerHTML={{ __html: formatSlackText(description) }}
+                />
+              )}
+              {/* 공지된 이벤트면 응답 옵션도 표시 */}
+              {event.announcement && (
+                <>
+                  <hr className="border-gray-300" />
+                  <div className="text-xs text-gray-500">
+                    {event.announcement.responseOptions
+                      .sort((a, b) => a.order - b.order)
+                      .map((opt) => `${opt.emoji || ''} ${opt.label}`)
+                      .join(' | ')}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </form>
     </Modal>
