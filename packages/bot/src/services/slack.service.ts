@@ -6,6 +6,7 @@
 
 import type { WebClient } from '@slack/web-api';
 import type { Event, EventResponseOption, SlackChannel } from '@baepdoongi/shared';
+import { formatEventDateTimeForDisplay } from '../utils/date-formatter.js';
 
 /** 사용자 프로필 정보 */
 export interface SlackUserProfile {
@@ -235,20 +236,29 @@ export async function listPublicChannels(
 
 /**
  * 이벤트 공지 메시지용 Block Kit 블록을 생성합니다.
+ * @param event 이벤트 정보
+ * @param responseOptions 응답 옵션 목록
+ * @param responseCounts 옵션별 응답 수
+ * @param allowMultipleSelection 중복 선택 허용 여부 (표시용으로 보관, 현재 미사용)
+ * @param userId 현재 사용자 ID (표시용으로 보관, 현재 미사용 - 공지 메시지는 공유됨)
+ * @param userSelections 현재 사용자의 선택 목록 (표시용으로 보관, 현재 미사용)
  */
 export function buildEventAnnouncementBlocks(
   event: Event,
   responseOptions: EventResponseOption[],
-  responseCounts?: Record<string, number>
+  responseCounts?: Record<string, number>,
+  _allowMultipleSelection?: boolean,
+  _userId?: string,
+  _userSelections?: string[]
 ): unknown[] {
-  const datetime = new Date(event.datetime);
-  const formattedDate = datetime.toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
+  const formattedDate = formatEventDateTimeForDisplay({
+    startDate: event.startDate,
+    endDate: event.endDate,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    isMultiDay: event.isMultiDay,
+    hasTime: event.hasTime,
+    datetime: event.datetime,
   });
 
   // 응답 현황 텍스트 생성

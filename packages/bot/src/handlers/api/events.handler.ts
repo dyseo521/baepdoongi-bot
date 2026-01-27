@@ -175,6 +175,13 @@ async function handleCreateEvent(
       status: body.status || 'published',
       createdBy: body.createdBy || 'dashboard',
       createdAt: now,
+      // 새 날짜/시간 필드
+      ...(body.startDate && { startDate: body.startDate }),
+      ...(body.endDate && { endDate: body.endDate }),
+      ...(body.startTime && { startTime: body.startTime }),
+      ...(body.endTime && { endTime: body.endTime }),
+      ...(body.isMultiDay !== undefined && { isMultiDay: body.isMultiDay }),
+      ...(body.hasTime !== undefined && { hasTime: body.hasTime }),
     };
 
     await saveEvent(newEvent);
@@ -226,10 +233,17 @@ async function handleUpdateEvent(
         const client = await getSlackClient();
         const rsvps = await getEventRSVPs(eventId);
 
+        // 응답 현황 집계 (중복 선택 모드 지원)
         const responseCounts: Record<string, number> = {};
         for (const rsvp of rsvps) {
-          const optionId = rsvp.responseOptionId || (rsvp.status === 'attending' ? 'attend' : 'absent');
-          responseCounts[optionId] = (responseCounts[optionId] || 0) + 1;
+          if (rsvp.responseOptionIds && rsvp.responseOptionIds.length > 0) {
+            for (const optionId of rsvp.responseOptionIds) {
+              responseCounts[optionId] = (responseCounts[optionId] || 0) + 1;
+            }
+          } else {
+            const optionId = rsvp.responseOptionId || (rsvp.status === 'attending' ? 'attend' : 'absent');
+            responseCounts[optionId] = (responseCounts[optionId] || 0) + 1;
+          }
         }
 
         const blocks = buildEventAnnouncementBlocks(
@@ -331,9 +345,10 @@ async function handleAnnounceEvent(
 ): Promise<APIGatewayProxyResult> {
   try {
     const body = JSON.parse(apiEvent.body || '{}');
-    const { channelId, responseOptions } = body as {
+    const { channelId, responseOptions, allowMultipleSelection } = body as {
       channelId: string;
       responseOptions: EventResponseOption[];
+      allowMultipleSelection?: boolean;
     };
 
     if (!channelId || !responseOptions || responseOptions.length === 0) {
@@ -383,6 +398,7 @@ async function handleAnnounceEvent(
       responseOptions,
       announcedAt: new Date().toISOString(),
       announcedBy: 'dashboard',
+      ...(allowMultipleSelection && { allowMultipleSelection }),
     };
 
     eventItem.announcement = announcement;
@@ -444,11 +460,19 @@ async function handleGetEventRSVPs(eventId: string): Promise<APIGatewayProxyResu
       (a, b) => new Date(b.respondedAt).getTime() - new Date(a.respondedAt).getTime()
     );
 
-    // 옵션별 응답 수 요약
+    // 옵션별 응답 수 요약 (중복 선택 모드 지원)
     const summary: Record<string, number> = {};
     for (const rsvp of rsvps) {
-      const optionId = rsvp.responseOptionId || (rsvp.status === 'attending' ? 'attend' : 'absent');
-      summary[optionId] = (summary[optionId] || 0) + 1;
+      // 중복 선택 모드인 경우 responseOptionIds 배열 처리
+      if (rsvp.responseOptionIds && rsvp.responseOptionIds.length > 0) {
+        for (const optionId of rsvp.responseOptionIds) {
+          summary[optionId] = (summary[optionId] || 0) + 1;
+        }
+      } else {
+        // 단일 선택 모드
+        const optionId = rsvp.responseOptionId || (rsvp.status === 'attending' ? 'attend' : 'absent');
+        summary[optionId] = (summary[optionId] || 0) + 1;
+      }
     }
 
     const response: RSVPListResponse = {
@@ -528,6 +552,13 @@ async function handleSendBulkDM(
           eventTitle: eventItem.title,
           eventDatetime: eventItem.datetime,
           eventLocation: eventItem.location,
+          // 새 날짜/시간 필드
+          startDate: eventItem.startDate,
+          endDate: eventItem.endDate,
+          startTime: eventItem.startTime,
+          endTime: eventItem.endTime,
+          isMultiDay: eventItem.isMultiDay,
+          hasTime: eventItem.hasTime,
         }),
       })
     );
