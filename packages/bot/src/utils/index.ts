@@ -4,3 +4,4 @@
 
 export * from './name-validator.js';
 export * from './id.js';
+export * from './date-formatter.js';
