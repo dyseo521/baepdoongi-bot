@@ -83,7 +83,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
       const request = {
         userIds: selectedUserIds,
         templateId: selectedTemplate.templateId,
-        ...(selectedTemplate.templateId === 'custom' && customMessage && { customMessage }),
+        ...((selectedTemplate.templateId === 'custom' || selectedTemplate.templateId === 'additional') && customMessage && { customMessage }),
       };
       const response: BulkDMJobResponse = await sendBulkDM(event.eventId, request);
 
@@ -140,9 +140,10 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
   };
 
   // 발송 불가 상태인지 확인
+  const needsCustomMessage = selectedTemplate?.templateId === 'custom' || selectedTemplate?.templateId === 'additional';
   const canSend = selectedUserIds.length > 0 &&
     selectedTemplate !== null &&
-    (selectedTemplate.templateId !== 'custom' || customMessage.trim().length > 0);
+    (!needsCustomMessage || customMessage.trim().length > 0);
 
   return (
     <div className="border-b border-gray-200 pb-4 mb-4">
@@ -173,7 +174,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
                   key={template.templateId}
                   type="button"
                   onClick={() => handleSelectTemplate(template)}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors"
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
                 >
                   <div className="font-medium text-gray-900">{template.name}</div>
                   <div className="text-xs text-gray-500">{template.description}</div>
@@ -209,12 +210,16 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
             </button>
           </div>
 
-          {/* 직접 입력 에디터 */}
-          {selectedTemplate.templateId === 'custom' && (
+          {/* 메시지 입력 에디터 (custom, additional 템플릿) */}
+          {(selectedTemplate.templateId === 'custom' || selectedTemplate.templateId === 'additional') && (
             <RichTextEditor
               value={customMessage}
               onChange={setCustomMessage}
-              placeholder="메시지를 입력하세요..."
+              placeholder={
+                selectedTemplate.templateId === 'custom'
+                  ? '메시지를 입력하세요...'
+                  : '추가 공지 내용을 입력하세요...'
+              }
               rows={4}
             />
           )}
@@ -228,7 +233,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent }: DMSendSectio
           </div>
 
           {/* 발송 버튼 */}
-          <div className="flex gap-2">
+          <div className="flex justify-end gap-3 mt-4">
             <Button
               variant="secondary"
               size="sm"
