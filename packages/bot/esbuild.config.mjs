@@ -33,6 +33,12 @@ await Promise.all([
     entryPoints: ['src/name-checker.ts'],
     outfile: 'dist/name-checker.js',
   }),
+  // DM Worker Lambda (SQS 트리거)
+  esbuild.build({
+    ...commonConfig,
+    entryPoints: ['src/dm-worker.ts'],
+    outfile: 'dist/dm-worker.js',
+  }),
 ]);
 
 console.log('Build completed successfully!');
