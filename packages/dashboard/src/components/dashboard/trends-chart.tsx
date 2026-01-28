@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import type { DailyDataPoint } from '@baepdoongi/shared';
 
-interface TrendsChartProps {
+export interface TrendsChartProps {
   data: DailyDataPoint[];
   color?: string;
   gradientId?: string;
