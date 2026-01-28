@@ -11,7 +11,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000,
+            staleTime: 60 * 1000, // 1분
+            gcTime: 5 * 60 * 1000, // 5분 후 가비지 컬렉션
             refetchOnWindowFocus: false,
           },
         },
