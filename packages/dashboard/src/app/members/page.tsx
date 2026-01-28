@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, AlertTriangle, CheckCircle, RefreshCw, MessageSquare, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
@@ -56,14 +56,16 @@ function MembersContent() {
     });
   }, [members, sortKey, sortDirection]);
 
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
+  const handleSort = useCallback((key: SortKey) => {
+    setSortKey((prevKey) => {
+      if (prevKey === key) {
+        setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+        return prevKey;
+      }
       setSortDirection('asc');
-    }
-  };
+      return key;
+    });
+  }, []);
 
   const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
     if (sortKey !== columnKey) {
@@ -103,13 +105,16 @@ function MembersContent() {
     },
   });
 
-  const handleWarn = (member: Member) => {
-    if (confirm(`"${member.displayName}"에게 이름 형식 경고 DM을 보내시겠습니까?`)) {
-      warnMutation.mutate(member.slackId);
-    }
-  };
+  const handleWarn = useCallback(
+    (member: Member) => {
+      if (confirm(`"${member.displayName}"에게 이름 형식 경고 DM을 보내시겠습니까?`)) {
+        warnMutation.mutate(member.slackId);
+      }
+    },
+    [warnMutation]
+  );
 
-  const handleWarnAll = () => {
+  const handleWarnAll = useCallback(() => {
     const invalidMembers = members.filter((m) => !m.isNameValid);
     if (invalidMembers.length === 0) {
       alert('이름 형식 미준수 회원이 없습니다.');
@@ -118,7 +123,7 @@ function MembersContent() {
     if (confirm(`이름 형식 미준수 ${invalidMembers.length}명에게 경고 DM을 보내시겠습니까?`)) {
       invalidMembers.forEach((m) => warnMutation.mutate(m.slackId));
     }
-  };
+  }, [members, warnMutation]);
 
   const columns = [
     {

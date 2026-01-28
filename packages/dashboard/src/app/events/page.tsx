@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, MapPin, Clock, Send, CheckCircle, Trash2, Pencil, Users, AlertCircle } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
@@ -121,58 +121,83 @@ function EventsContent() {
     );
   }
 
-  const handleDelete = async (eventId: string, title: string) => {
-    if (confirm(`"${title}" 이벤트를 삭제하시겠습니까?`)) {
-      await deleteMutation.mutateAsync(eventId);
-    }
-  };
+  const handleDelete = useCallback(
+    async (eventId: string, title: string) => {
+      if (confirm(`"${title}" 이벤트를 삭제하시겠습니까?`)) {
+        await deleteMutation.mutateAsync(eventId);
+      }
+    },
+    [deleteMutation]
+  );
 
-  const handleCreate = async (event: {
-    title: string;
-    description: string;
-    datetime: string;
-    location: string;
-    type: EventType;
-  }) => {
-    await createMutation.mutateAsync({
-      ...event,
-      status: 'published',
-      createdBy: 'dashboard',
-    });
-  };
+  const handleCreate = useCallback(
+    async (event: {
+      title: string;
+      description: string;
+      datetime: string;
+      location: string;
+      type: EventType;
+    }) => {
+      await createMutation.mutateAsync({
+        ...event,
+        status: 'published',
+        createdBy: 'dashboard',
+      });
+    },
+    [createMutation]
+  );
 
-  const handleEdit = async (data: Partial<Event>) => {
-    if (!selectedEvent) return;
-    await updateMutation.mutateAsync({
-      eventId: selectedEvent.eventId,
-      data,
-    });
-  };
+  const handleEdit = useCallback(
+    async (data: Partial<Event>) => {
+      if (!selectedEvent) return;
+      await updateMutation.mutateAsync({
+        eventId: selectedEvent.eventId,
+        data,
+      });
+    },
+    [selectedEvent, updateMutation]
+  );
 
-  const openEditModal = (event: Event) => {
+  const openEditModal = useCallback((event: Event) => {
     setSelectedEvent(event);
     setIsEditModalOpen(true);
-  };
+  }, []);
 
-  const handleAnnounce = async (channelId: string, responseOptions: EventResponseOption[], allowMultipleSelection: boolean) => {
-    if (!selectedEvent) return;
-    await announceMutation.mutateAsync({
-      eventId: selectedEvent.eventId,
-      channelId,
-      responseOptions,
-      allowMultipleSelection,
-    });
-  };
+  const handleAnnounce = useCallback(
+    async (channelId: string, responseOptions: EventResponseOption[], allowMultipleSelection: boolean) => {
+      if (!selectedEvent) return;
+      await announceMutation.mutateAsync({
+        eventId: selectedEvent.eventId,
+        channelId,
+        responseOptions,
+        allowMultipleSelection,
+      });
+    },
+    [selectedEvent, announceMutation]
+  );
 
-  const openAnnounceModal = (event: Event) => {
+  const openAnnounceModal = useCallback((event: Event) => {
     setSelectedEvent(event);
     setIsAnnounceModalOpen(true);
-  };
+  }, []);
 
-  const openRSVPModal = (event: Event) => {
+  const openRSVPModal = useCallback((event: Event) => {
     setSelectedEvent(event);
     setIsRSVPModalOpen(true);
-  };
+  }, []);
+
+  // 모달 프리로드 (호버 시 미리 로드하여 UX 개선)
+  const preloadAnnounceModal = useCallback(() => {
+    void import('@/components/events/announce-modal');
+  }, []);
+
+  const preloadEditModal = useCallback(() => {
+    void import('@/components/events/edit-event-modal');
+  }, []);
+
+  const preloadRSVPModal = useCallback(() => {
+    void import('@/components/events/rsvp-list-modal');
+  }, []);
 
   const columns = [
     {
@@ -241,6 +266,8 @@ function EventsContent() {
                 variant="primary"
                 leftIcon={<Users className="w-3 h-3" />}
                 onClick={() => openRSVPModal(event)}
+                onMouseEnter={preloadRSVPModal}
+                onFocus={preloadRSVPModal}
               >
                 응답 현황 및 DM 발송
               </Button>
@@ -250,6 +277,8 @@ function EventsContent() {
                 variant="secondary"
                 leftIcon={<Send className="w-3 h-3" />}
                 onClick={() => openAnnounceModal(event)}
+                onMouseEnter={preloadAnnounceModal}
+                onFocus={preloadAnnounceModal}
                 disabled={event.status === 'cancelled'}
               >
                 Slack 공지
@@ -260,6 +289,8 @@ function EventsContent() {
               variant="ghost"
               leftIcon={<Pencil className="w-3 h-3" />}
               onClick={() => openEditModal(event)}
+              onMouseEnter={preloadEditModal}
+              onFocus={preloadEditModal}
             >
               수정
             </Button>
