@@ -9,7 +9,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { toMrkdwn, fromMrkdwn } from '@/lib/mrkdwn';
 
-interface RichTextEditorProps {
+export interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { searchEmojis, containsKorean } from '@/lib/emoji-ko';
 
-interface EmojiPickerButtonProps {
+export interface EmojiPickerButtonProps {
   value?: string | undefined;
   onSelect: (emoji: string) => void;
   className?: string;
