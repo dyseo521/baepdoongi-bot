@@ -118,23 +118,6 @@ docs/
   knowledge-base/         # RAG Knowledge Base 문서
 ```
 
-## 데이터 모델 (DynamoDB Single Table)
-
-| 엔티티 | PK | SK | 설명 |
-|--------|----|----|------|
-| Member | `MEMBER#{slackId}` | `DETAIL` | 회원 정보 |
-| Event | `EVENT#{eventId}` | `DETAIL` | 이벤트 정보 |
-| RSVP | `EVENT#{eventId}` | `RSVP#{userId}` | 이벤트 응답 |
-| Suggestion | `SUGGESTION#{id}` | `DETAIL` | 건의사항 |
-| Submission | `SUB#{id}` | `DETAIL` | 지원서 |
-| Deposit | `DEP#{id}` | `DETAIL` | 입금 기록 |
-| Log | `LOG` | `LOG#{createdAt}#{logId}` | 활동 로그 |
-| RagSession | `RAG_SESSION#{sessionId}` | `DETAIL` | RAG 대화 세션 |
-
-**GSI 패턴**:
-- `GSI1`: 엔티티 타입 + 타임스탬프 조회
-- `GSI2`: 상태 또는 로그 타입별 조회
-
 ## 개발 환경
 
 ```bash
@@ -164,19 +147,3 @@ Secrets Manager에서 관리:
 - `DASHBOARD_PASSWORD`
 - `GOOGLE_SHEETS_CREDENTIALS`, `GOOGLE_SHEETS_ID`
 - `TOSS_WEBHOOK_SECRET`
-
-## Knowledge Base
-
-### 문서 목록
-
-| 파일 | 내용 |
-|------|------|
-| `01-동아리-소개.md` | IGRUS 소개, 운영진, 연락처 |
-| `02-회비-안내.md` | 회비 금액, 계좌 정보 |
-| `03-활동-안내.md` | 스터디, 프로젝트, 행사 |
-| `04-슬랙-가이드.md` | 프로필 규칙, 채널, 봇 사용법 |
-| `05-FAQ.md` | 자주 묻는 질문 |
-| `06-인하대-맛집.md` | 인하대 주변 맛집 |
-| `07-캠퍼스-시설.md` | 캠퍼스 시설 가이드 |
-| `08-학사-꿀팁.md` | 학사제도 꿀팁 |
-
