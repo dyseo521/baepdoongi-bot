@@ -10,6 +10,16 @@ const nextConfig: NextConfig = {
   // shared 패키지 트랜스파일
   transpilePackages: ['@baepdoongi/shared'],
 
+  // barrel imports 자동 최적화 (번들 크기 감소)
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      '@tanstack/react-query',
+      'recharts',
+      'date-fns',
+    ],
+  },
+
   // 이미지 최적화 비활성화 (정적 빌드에서 필요)
   images: {
     unoptimized: true,
