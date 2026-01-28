@@ -22,9 +22,8 @@ export const RESPONSE_TEMPLATES = {
   ],
   detailed: [
     { optionId: 'attend', label: '참석', emoji: '✅', order: 1 },
-    { optionId: 'online', label: '온라인', emoji: '💻', order: 2 },
-    { optionId: 'late', label: '늦참', emoji: '⏰', order: 3 },
-    { optionId: 'absent', label: '불참', emoji: '❌', order: 4 },
+    { optionId: 'late', label: '늦참', emoji: '⏰', order: 2 },
+    { optionId: 'absent', label: '불참', emoji: '❌', order: 3 },
   ],
   basic: [
     { optionId: 'option_1', label: '버튼 1', emoji: '1️⃣', order: 1 },
@@ -142,6 +141,13 @@ export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseO
           <span className="text-sm text-gray-500">템플릿:</span>
           <button
             type="button"
+            onClick={() => applyTemplate('basic')}
+            className="text-sm px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            기본
+          </button>
+          <button
+            type="button"
             onClick={() => applyTemplate('simple')}
             className="text-sm px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
           >
@@ -152,14 +158,7 @@ export function ResponseOptionsEditor({ options, onChange, disabled }: ResponseO
             onClick={() => applyTemplate('detailed')}
             className="text-sm px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
           >
-            참석/온라인/늦참/불참
-          </button>
-          <button
-            type="button"
-            onClick={() => applyTemplate('basic')}
-            className="text-sm px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
-          >
-            기본
+            참석/늦참/불참
           </button>
         </div>
       )}
