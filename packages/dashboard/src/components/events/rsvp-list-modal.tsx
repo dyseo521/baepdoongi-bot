@@ -10,7 +10,7 @@ import { fetchEventRSVPs, getEventDMHistory } from '../../lib/api';
 import type { Event, RSVPWithMember, EventResponseOption, BulkDMJob } from '@baepdoongi/shared';
 import { DM_TEMPLATES } from '@baepdoongi/shared';
 
-interface RSVPListModalProps {
+export interface RSVPListModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: Event | null;

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button, Modal, RichTextEditor } from '@/components/ui';
 import type { EventType } from '@baepdoongi/shared';
 
-interface CreateEventModalProps {
+export interface CreateEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (event: {

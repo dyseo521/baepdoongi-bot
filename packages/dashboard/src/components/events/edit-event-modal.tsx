@@ -30,7 +30,7 @@ const formatAnnouncedAt = (isoString: string): string => {
   return `${month}/${day}(${weekday}) ${hours}:${minutes}`;
 };
 
-interface EditEventModalProps {
+export interface EditEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: Event | null;

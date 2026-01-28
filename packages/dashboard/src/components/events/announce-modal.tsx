@@ -21,7 +21,7 @@ function formatSlackText(text: string): string {
     .replace(/\n/g, '<br />');
 }
 
-interface AnnounceModalProps {
+export interface AnnounceModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: Event | null;
