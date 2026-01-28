@@ -46,7 +46,6 @@ function EventsContent() {
     retry: 1,
   });
 
-  // 모든 훅은 조건부 반환 전에 선언해야 함 (React Rules of Hooks)
   const announceMutation = useMutation({
     mutationFn: async ({
       eventId,
@@ -104,23 +103,7 @@ function EventsContent() {
     },
   });
 
-  // 스켈레톤 로딩 표시
-  if (isLoading) {
-    return <EventsPageSkeleton />;
-  }
-
-  // 에러 표시
-  if (isError) {
-    return (
-      <div className="p-8">
-        <div className="card p-8 text-center">
-          <div className="text-red-500 mb-2">데이터를 불러오는데 실패했습니다</div>
-          <div className="text-sm text-gray-500">{(error as Error)?.message}</div>
-        </div>
-      </div>
-    );
-  }
-
+  // 모든 useCallback 훅은 조건부 반환 전에 선언해야 함 (React Rules of Hooks)
   const handleDelete = useCallback(
     async (eventId: string, title: string) => {
       if (confirm(`"${title}" 이벤트를 삭제하시겠습니까?`)) {
@@ -198,6 +181,23 @@ function EventsContent() {
   const preloadRSVPModal = useCallback(() => {
     void import('@/components/events/rsvp-list-modal');
   }, []);
+
+  // 스켈레톤 로딩 표시
+  if (isLoading) {
+    return <EventsPageSkeleton />;
+  }
+
+  // 에러 표시
+  if (isError) {
+    return (
+      <div className="p-8">
+        <div className="card p-8 text-center">
+          <div className="text-red-500 mb-2">데이터를 불러오는데 실패했습니다</div>
+          <div className="text-sm text-gray-500">{(error as Error)?.message}</div>
+        </div>
+      </div>
+    );
+  }
 
   const columns = [
     {
