@@ -16,9 +16,11 @@ export class SecretsStack extends cdk.Stack {
     super(scope, id, props);
 
     // Slack 토큰 및 웹훅 시크릿 (수동으로 값 설정 필요)
+    // removalPolicy: RETAIN으로 스택 삭제/교체 시에도 시크릿 보존
     this.slackSecret = new secretsmanager.Secret(this, 'SlackSecret', {
       secretName: 'baepdoongi/slack-tokens',
       description: 'Slack Bot 토큰 및 웹훅 시크릿',
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
       // 초기값은 플레이스홀더 - AWS Console에서 실제 값으로 업데이트 필요
       generateSecretString: {
         secretStringTemplate: JSON.stringify({

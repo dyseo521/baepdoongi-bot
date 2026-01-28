@@ -107,9 +107,14 @@ export async function checkAuth(): Promise<boolean> {
       return true;
     }
 
-    // API 인증 실패 시 로컬 세션도 삭제
-    localStorage.removeItem(SESSION_KEY);
-    return false;
+    // 401/403만 인증 실패로 처리 (500 등 서버 에러는 로컬 세션 유지)
+    if (response.status === 401 || response.status === 403) {
+      localStorage.removeItem(SESSION_KEY);
+      return false;
+    }
+
+    // 서버 에러(500 등)는 로컬 세션으로 폴백
+    return localSession === 'authenticated';
   } catch {
     // API 연결 실패 시 로컬 세션으로 폴백
     return localSession === 'authenticated';
