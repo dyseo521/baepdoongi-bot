@@ -167,6 +167,8 @@ function DashboardContent() {
                         alt={member.displayName}
                         width={32}
                         height={32}
+                        loading="lazy"
+                        decoding="async"
                         className="w-8 h-8 rounded-full"
                       />
                     ) : (

@@ -120,3 +120,11 @@
     @apply badge bg-gray-100 text-gray-800;
   }
 }
+
+/* 긴 목록 렌더링 성능 최적화 */
+.log-item,
+.member-item,
+.submission-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 60px;
+}
