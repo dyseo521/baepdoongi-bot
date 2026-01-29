@@ -3,7 +3,9 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { MobileMenuProvider } from '@/contexts/mobile-menu-context';
 import { Sidebar } from './sidebar';
+import { MobileHeader } from './mobile-header';
 import { PageSkeleton } from '../ui/skeleton';
 
 interface AuthLayoutProps {
@@ -16,6 +18,7 @@ interface AuthLayoutProps {
  * - AuthContext를 통해 전역 인증 상태 사용
  * - 인증 로딩 중에도 사이드바 즉시 표시 (children만 스켈레톤)
  * - 미인증 시 로그인 페이지로 리다이렉트
+ * - MobileMenuProvider로 모바일 메뉴 상태 관리
  */
 export function AuthLayout({ children }: AuthLayoutProps) {
   const router = useRouter();
@@ -32,11 +35,15 @@ export function AuthLayout({ children }: AuthLayoutProps) {
   // 인증 확인 중이거나 미인증 시에도 레이아웃은 표시 (사이드바 보임)
   // children 영역만 스켈레톤으로 대체
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
-        {isLoading ? <PageSkeleton /> : isAuthenticated ? children : <PageSkeleton />}
-      </main>
-    </div>
+    <MobileMenuProvider>
+      <div className="min-h-screen flex bg-gray-50">
+        {/* 모바일 헤더 */}
+        <MobileHeader />
+        <Sidebar />
+        <main className="flex-1 overflow-auto pt-14 md:pt-0">
+          {isLoading ? <PageSkeleton /> : isAuthenticated ? children : <PageSkeleton />}
+        </main>
+      </div>
+    </MobileMenuProvider>
   );
 }

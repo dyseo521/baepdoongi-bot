@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
@@ -13,9 +13,11 @@ import {
   CreditCard,
   ChevronDown,
   LogOut,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { logout } from '@/lib/auth';
+import { useMobileMenu } from '@/contexts/mobile-menu-context';
 
 interface NavigationChild {
   name: string;
@@ -50,6 +52,7 @@ const navigation: NavigationItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { isOpen, close } = useMobileMenu();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
     // Auto-expand menu if current path is in its children
@@ -61,6 +64,18 @@ export function Sidebar() {
     });
     return expanded;
   });
+
+  // 모바일에서 사이드바 열릴 때 body 스크롤 방지
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   const toggleMenu = (name: string) => {
     setExpandedMenus((prev) =>
@@ -78,121 +93,157 @@ export function Sidebar() {
     }
   };
 
+  const handleNavClick = () => {
+    // 모바일에서 메뉴 클릭 시 사이드바 닫기
+    close();
+  };
+
   return (
-    <aside className="w-64 bg-slate-800 text-white flex flex-col">
-      {/* Logo */}
-      <Link
-        href="/dashboard"
-        className="p-6 border-b border-slate-700 flex items-center gap-3 hover:bg-slate-700 transition-colors"
-      >
-        <img
-          src="/images/logo.webp"
-          alt="뱁둥이 로고"
-          width={48}
-          height={48}
-          className="rounded-lg"
+    <>
+      {/* 모바일 오버레이 */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={close}
+          aria-hidden="true"
         />
-        <h1 className="text-3xl font-bold">뱁둥이</h1>
-      </Link>
+      )}
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4">
-        <ul className="space-y-1">
-          {navigation.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.children
-                ? item.children.some((child) => pathname.startsWith(child.href))
-                : pathname.startsWith(item.href));
-            const isExpanded = expandedMenus.includes(item.name);
-            const hasChildren = item.children && item.children.length > 0;
-            const Icon = item.icon;
+      <aside
+        className={clsx(
+          'bg-slate-800 text-white flex flex-col w-64',
+          'fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          'md:relative md:translate-x-0 md:z-auto'
+        )}
+      >
+        {/* Logo */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-700">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            onClick={handleNavClick}
+          >
+            <img
+              src="/images/logo.webp"
+              alt="뱁둥이 로고"
+              width={48}
+              height={48}
+              className="rounded-lg"
+            />
+            <h1 className="text-3xl font-bold">뱁둥이</h1>
+          </Link>
+          {/* 모바일 닫기 버튼 */}
+          <button
+            onClick={close}
+            className="md:hidden p-2 text-slate-300 hover:bg-slate-700 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="메뉴 닫기"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-            return (
-              <li key={item.name}>
-                {hasChildren ? (
-                  <>
-                    <button
-                      onClick={() => toggleMenu(item.name)}
-                      aria-expanded={isExpanded}
-                      aria-controls={`submenu-${item.name}`}
+        {/* Navigation */}
+        <nav className="flex-1 p-4 overflow-y-auto">
+          <ul className="space-y-1">
+            {navigation.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.children
+                  ? item.children.some((child) => pathname.startsWith(child.href))
+                  : pathname.startsWith(item.href));
+              const isExpanded = expandedMenus.includes(item.name);
+              const hasChildren = item.children && item.children.length > 0;
+              const Icon = item.icon;
+
+              return (
+                <li key={item.name}>
+                  {hasChildren ? (
+                    <>
+                      <button
+                        onClick={() => toggleMenu(item.name)}
+                        aria-expanded={isExpanded}
+                        aria-controls={`submenu-${item.name}`}
+                        className={clsx(
+                          'w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg transition-colors min-h-[44px]',
+                          isActive
+                            ? 'bg-primary-600 text-white'
+                            : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                        )}
+                      >
+                        <span className="flex items-center gap-3">
+                          <Icon className="w-5 h-5" aria-hidden="true" />
+                          <span>{item.name}</span>
+                        </span>
+                        <ChevronDown
+                          className={clsx(
+                            'w-4 h-4 transition-transform',
+                            isExpanded && 'rotate-180'
+                          )}
+                          aria-hidden="true"
+                        />
+                      </button>
+                      {isExpanded && item.children && (
+                        <ul id={`submenu-${item.name}`} className="mt-1 ml-4 space-y-1">
+                          {item.children.map((child) => {
+                            const isChildActive = pathname.startsWith(child.href);
+                            return (
+                              <li key={child.href}>
+                                <Link
+                                  href={child.href}
+                                  onClick={handleNavClick}
+                                  className={clsx(
+                                    'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm min-h-[44px]',
+                                    isChildActive
+                                      ? 'bg-primary-500 text-white'
+                                      : 'text-slate-400 hover:bg-slate-700 hover:text-white'
+                                  )}
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                  <span>{child.name}</span>
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      onClick={handleNavClick}
                       className={clsx(
-                        'w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg transition-colors',
+                        'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors min-h-[44px]',
                         isActive
                           ? 'bg-primary-600 text-white'
                           : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                       )}
                     >
-                      <span className="flex items-center gap-3">
-                        <Icon className="w-5 h-5" aria-hidden="true" />
-                        <span>{item.name}</span>
-                      </span>
-                      <ChevronDown
-                        className={clsx(
-                          'w-4 h-4 transition-transform',
-                          isExpanded && 'rotate-180'
-                        )}
-                        aria-hidden="true"
-                      />
-                    </button>
-                    {isExpanded && item.children && (
-                      <ul id={`submenu-${item.name}`} className="mt-1 ml-4 space-y-1">
-                        {item.children.map((child) => {
-                          const isChildActive = pathname.startsWith(child.href);
-                          return (
-                            <li key={child.href}>
-                              <Link
-                                href={child.href}
-                                className={clsx(
-                                  'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm',
-                                  isChildActive
-                                    ? 'bg-primary-500 text-white'
-                                    : 'text-slate-400 hover:bg-slate-700 hover:text-white'
-                                )}
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                                <span>{child.name}</span>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </>
-                ) : (
-                  <Link
-                    href={item.href}
-                    className={clsx(
-                      'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors',
-                      isActive
-                        ? 'bg-primary-600 text-white'
-                        : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span>{item.name}</span>
-                  </Link>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+                      <Icon className="w-5 h-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-slate-700">
-        <button
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors disabled:opacity-50"
-        >
-          <LogOut className="w-5 h-5" />
-          <span>{isLoggingOut ? '로그아웃 중...' : '로그아웃'}</span>
-        </button>
-        <div className="mt-3 px-4 text-xs text-slate-500">
-          <p>IGRUS Slack Bot v2.0.0</p>
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-700">
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors disabled:opacity-50 min-h-[44px]"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>{isLoggingOut ? '로그아웃 중...' : '로그아웃'}</span>
+          </button>
+          <div className="mt-3 px-4 text-xs text-slate-500">
+            <p>IGRUS Slack Bot v2.0.0</p>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
