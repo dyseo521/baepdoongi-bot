@@ -368,7 +368,7 @@ export async function sendSubmissionInvite(
     return false;
   }
 
-  if (submission.status !== 'matched') {
+  if (submission.status !== 'matched' && submission.status !== 'invited') {
     console.error('매칭되지 않은 지원서입니다.');
     return false;
   }

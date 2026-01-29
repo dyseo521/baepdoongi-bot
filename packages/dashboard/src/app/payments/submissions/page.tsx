@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard, RotateCw } from 'lucide-react';
 import Link from 'next/link';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, Modal, SubmissionsPageSkeleton, MobileDataCard } from '@/components/ui';
@@ -193,6 +193,7 @@ function SubmissionsContent() {
       key: 'actions',
       header: '',
       render: (sub: Submission) => {
+        // 최초 발송: matched 상태 + 미발송
         if (sub.status === 'matched' && !sub.emailSent) {
           return (
             <Button
@@ -202,6 +203,20 @@ function SubmissionsContent() {
               isLoading={sendEmailMutation.isPending}
             >
               초대 발송
+            </Button>
+          );
+        }
+        // 재전송: invited 상태 또는 이미 발송됨
+        if (sub.status === 'invited' || sub.emailSent) {
+          return (
+            <Button
+              size="sm"
+              variant="secondary"
+              leftIcon={<RotateCw className="w-3 h-3" />}
+              onClick={() => sendEmailMutation.mutate(sub.submissionId)}
+              isLoading={sendEmailMutation.isPending}
+            >
+              재전송
             </Button>
           );
         }
@@ -252,6 +267,7 @@ function SubmissionsContent() {
         ]}
         onClick={() => setSelectedSubmission(sub)}
         actions={
+          // 최초 발송
           sub.status === 'matched' && !sub.emailSent ? (
             <Button
               size="sm"
@@ -264,6 +280,21 @@ function SubmissionsContent() {
               className="w-full"
             >
               초대 메일 발송
+            </Button>
+          ) : // 재전송
+          sub.status === 'invited' || sub.emailSent ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              leftIcon={<RotateCw className="w-4 h-4" />}
+              onClick={(e) => {
+                e.stopPropagation();
+                sendEmailMutation.mutate(sub.submissionId);
+              }}
+              isLoading={sendEmailMutation.isPending}
+              className="w-full"
+            >
+              재전송
             </Button>
           ) : undefined
         }
@@ -347,6 +378,7 @@ function SubmissionsContent() {
                 입금 정보 보기
               </Button>
             )}
+            {/* 최초 발송 */}
             {selectedSubmission?.status === 'matched' && !selectedSubmission?.emailSent && (
               <Button
                 className="flex-1"
@@ -355,6 +387,18 @@ function SubmissionsContent() {
                 isLoading={sendEmailMutation.isPending}
               >
                 초대 메일 발송
+              </Button>
+            )}
+            {/* 재전송 */}
+            {(selectedSubmission?.status === 'invited' || selectedSubmission?.emailSent) && (
+              <Button
+                className="flex-1"
+                variant="secondary"
+                leftIcon={<RotateCw className="w-4 h-4" />}
+                onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
+                isLoading={sendEmailMutation.isPending}
+              >
+                재전송
               </Button>
             )}
           </div>
