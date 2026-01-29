@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Providers } from './providers';
 import { sbAgro } from './fonts';
+import { MockIndicator } from '@/components/layout/mock-indicator';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -16,7 +17,10 @@ export default function RootLayout({
   return (
     <html lang="ko" className={sbAgro.variable}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <MockIndicator />
+        </Providers>
       </body>
     </html>
   );
