@@ -14,6 +14,11 @@ import {
   Send,
   Users,
   Settings,
+  FileText,
+  CreditCard,
+  XCircle,
+  Trash2,
+  Mail,
 } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { Button, Badge } from '@/components/ui';
@@ -52,6 +57,21 @@ const LOG_TYPE_LABELS: Record<string, string> = {
   SYSTEM_START: '봇 시작',
   SYSTEM_ERROR: '시스템 오류',
   API_ERROR: 'API 오류',
+  // 결제/가입 관련
+  SUBMISSION_RECEIVE: '지원서 수신',
+  DEPOSIT_RECEIVE: '입금 수신',
+  PAYMENT_MATCH_AUTO: '자동 매칭',
+  PAYMENT_MATCH_MANUAL: '수동 매칭',
+  PAYMENT_MATCH_FAILED: '매칭 실패',
+  PAYMENT_UNMATCH: '매칭 해제',
+  SUBMISSION_DELETE: '지원서 삭제',
+  DEPOSIT_DELETE: '입금 삭제',
+  INVITE_EMAIL_SENT: '초대 이메일 발송',
+  INVITE_EMAIL_FAILED: '이메일 발송 실패',
+  // DM 관련 추가
+  BULK_DM_START: '단체 DM 시작',
+  BULK_DM_COMPLETE: '단체 DM 완료',
+  BULK_DM_FAILED: '단체 DM 실패',
 };
 
 // 로그 타입별 아이콘 및 색상
@@ -86,6 +106,21 @@ const LOG_TYPE_CONFIG: Record<string, { icon: typeof Activity; color: string; bg
   SYSTEM_START: { icon: Settings, color: 'text-green-600', bgColor: 'bg-green-100' },
   SYSTEM_ERROR: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100' },
   API_ERROR: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100' },
+  // 결제 관련
+  SUBMISSION_RECEIVE: { icon: FileText, color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  DEPOSIT_RECEIVE: { icon: CreditCard, color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  PAYMENT_MATCH_AUTO: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-100' },
+  PAYMENT_MATCH_MANUAL: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-100' },
+  PAYMENT_MATCH_FAILED: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100' },
+  PAYMENT_UNMATCH: { icon: XCircle, color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  SUBMISSION_DELETE: { icon: Trash2, color: 'text-red-600', bgColor: 'bg-red-100' },
+  DEPOSIT_DELETE: { icon: Trash2, color: 'text-red-600', bgColor: 'bg-red-100' },
+  INVITE_EMAIL_SENT: { icon: Mail, color: 'text-green-600', bgColor: 'bg-green-100' },
+  INVITE_EMAIL_FAILED: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100' },
+  // DM 관련 추가
+  BULK_DM_START: { icon: Send, color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  BULK_DM_COMPLETE: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-100' },
+  BULK_DM_FAILED: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100' },
 };
 
 const LOG_CATEGORIES = [
@@ -93,9 +128,10 @@ const LOG_CATEGORIES = [
   { value: 'member', label: '회원', types: ['MEMBER_JOIN', 'MEMBER_LEAVE', 'MEMBER_SYNC', 'MEMBER_PROFILE_UPDATE', 'NAME_VALID', 'NAME_INVALID', 'NAME_WARNING_SENT', 'NAME_WARNING_BULK'] },
   { value: 'event', label: '이벤트', types: ['EVENT_CREATE', 'EVENT_UPDATE', 'EVENT_DELETE', 'EVENT_ANNOUNCE', 'EVENT_ANNOUNCE_UPDATE', 'EVENT_RSVP', 'EVENT_REMINDER'] },
   { value: 'command', label: '커맨드', types: ['COMMAND_GUIDE', 'COMMAND_SUGGESTION', 'COMMAND_OTHER'] },
-  { value: 'dm', label: 'DM', types: ['DM_SENT', 'DM_WELCOME', 'DM_ERROR', 'NAME_WARNING_SENT'] },
+  { value: 'dm', label: 'DM', types: ['DM_SENT', 'DM_WELCOME', 'DM_ERROR', 'NAME_WARNING_SENT', 'BULK_DM_START', 'BULK_DM_COMPLETE', 'BULK_DM_FAILED'] },
   { value: 'suggestion', label: '건의사항', types: ['SUGGESTION_SUBMIT', 'SUGGESTION_READ', 'SUGGESTION_REPLY'] },
   { value: 'rag', label: 'RAG', types: ['RAG_QUERY', 'RAG_RESPONSE', 'RAG_ERROR'] },
+  { value: 'payment', label: '결제', types: ['SUBMISSION_RECEIVE', 'DEPOSIT_RECEIVE', 'PAYMENT_MATCH_AUTO', 'PAYMENT_MATCH_MANUAL', 'PAYMENT_MATCH_FAILED', 'PAYMENT_UNMATCH', 'SUBMISSION_DELETE', 'DEPOSIT_DELETE', 'INVITE_EMAIL_SENT', 'INVITE_EMAIL_FAILED'] },
   { value: 'system', label: '시스템', types: ['SYSTEM_START', 'SYSTEM_ERROR', 'API_ERROR'] },
 ];
 
