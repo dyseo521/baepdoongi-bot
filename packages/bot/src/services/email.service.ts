@@ -25,6 +25,10 @@ const BRAND = {
   backgroundColor: '#ECFDF5',
   instagram: 'https://www.instagram.com/igrus_inha/',
   email: 'weareigrus@gmail.com',
+  // 서비스별 브랜드 컬러
+  slackColor: '#4A154B',
+  kakaoColor: '#FEE500',
+  kakaoInviteLink: process.env['KAKAO_INVITE_LINK'] || 'https://invite.kakao.com/tc/INHTyYoc4H',
 };
 
 // 이메일 발송 실패 알림 채널
@@ -162,15 +166,22 @@ export async function sendInviteEmail(options: InviteEmailOptions): Promise<bool
                 <strong style="color: ${BRAND.primaryDark};">${name}</strong>님, 안녕하세요!
               </p>
               <p style="margin: 0 0 30px; color: #555555; font-size: 15px; line-height: 1.7;">
-                회비 납부가 확인되어 IGRUS Slack 워크스페이스에 초대드립니다.<br>
-                아래 버튼을 클릭하여 워크스페이스에 참여해주세요.
+                회비 납부가 확인되어 IGRUS에 초대드립니다.<br>
+                아래 버튼을 클릭하여 Slack과 카카오톡에 참여해주세요.
               </p>
 
               <!-- CTA 버튼 -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td align="center" style="padding: 10px 0 30px;">
-                    <a href="${inviteLink}" target="_blank" style="display: inline-block; background-color: ${BRAND.primaryColor}; color: #ffffff; padding: 16px 40px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+                  <td align="center" style="padding: 10px 0 15px;">
+                    <a href="${BRAND.kakaoInviteLink}" target="_blank" style="display: inline-block; background-color: ${BRAND.kakaoColor}; color: #000000; padding: 16px 40px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+                      카카오톡 팀채팅 참여하기
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 0 30px;">
+                    <a href="${inviteLink}" target="_blank" style="display: inline-block; background-color: ${BRAND.slackColor}; color: #ffffff; padding: 16px 40px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px;">
                       Slack 워크스페이스 참여하기
                     </a>
                   </td>
@@ -249,9 +260,14 @@ ${name}님, 안녕하세요!
 IGRUS 가입을 환영합니다!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-회비 납부가 확인되어 IGRUS Slack 워크스페이스에 초대드립니다.
+회비 납부가 확인되어 IGRUS에 초대드립니다.
 
-아래 링크를 클릭하여 워크스페이스에 참여해주세요:
+아래 링크를 클릭하여 Slack과 카카오톡에 참여해주세요:
+
+▶ 카카오톡 팀채팅:
+${BRAND.kakaoInviteLink}
+
+▶ Slack 워크스페이스:
 ${inviteLink}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -89,6 +89,7 @@ export class BotStack extends cdk.Stack {
         DM_QUEUE_URL: dmQueue.queueUrl,
         SES_FROM_EMAIL: 'weareigrus@gmail.com',
         SLACK_INVITE_LINK: 'https://join.slack.com/t/26-1igrus/shared_invite/zt-3oqsbieuc-KOwV0_s6X3M8SEZO6mkgGw',
+        KAKAO_INVITE_LINK: 'https://invite.kakao.com/tc/INHTyYoc4H',
       },
       architecture: lambda.Architecture.ARM_64,
     });
