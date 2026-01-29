@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { Button, Badge } from '@/components/ui';
-import { fetchLogs } from '@/lib/api';
+import { fetchLogs, fetchMembers } from '@/lib/api';
 import type { ActivityLog, LogType } from '@baepdoongi/shared';
 
 // 로그 타입별 한글 라벨
@@ -147,7 +147,8 @@ function formatLogDetails(log: ActivityLog): string {
       return details['title'] ? `"${details['title']}"` : '';
 
     case 'NAME_WARNING_SENT':
-      return log.targetUserId ? `대상: ${log.targetUserId}` : '';
+      // targetUserId는 로그 하단에서 이름 변환되어 표시됨
+      return '';
 
     case 'MEMBER_SYNC':
       return details['totalCount'] ? `${details['totalCount']}명 (유효: ${details['validNameCount']}, 미준수: ${details['invalidNameCount']})` : '';
@@ -183,8 +184,26 @@ function LogsContent() {
     queryFn: () => fetchLogs({ limit }),
   });
 
+  const { data: members } = useQuery({
+    queryKey: ['members'],
+    queryFn: () => fetchMembers('db'),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const logs = data?.logs || [];
   const todayCount = data?.todayCount || 0;
+
+  const memberNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    members?.forEach((m) => map.set(m.slackId, m.displayName));
+    return map;
+  }, [members]);
+
+  const getUserName = useCallback((userId: string): string => {
+    if (userId === 'system') return '시스템';
+    if (userId === 'dashboard') return '대시보드';
+    return memberNameMap.get(userId) || userId;
+  }, [memberNameMap]);
 
   // 카테고리 필터링
   const filteredLogs = selectedCategory
@@ -220,7 +239,7 @@ function LogsContent() {
           </div>
           <div className="card p-2 sm:p-4">
             <div className="text-[10px] sm:text-sm text-gray-500">전체 로그</div>
-            <div className="text-lg sm:text-2xl font-bold text-gray-900">{logs.length}</div>
+            <div className="text-lg sm:text-2xl font-bold text-gray-900">{data?.totalCount ?? 0}</div>
           </div>
           <div className="card p-2 sm:p-4">
             <div className="text-[10px] sm:text-sm text-gray-500">필터된 로그</div>
@@ -287,8 +306,8 @@ function LogsContent() {
                     </div>
                     {log.userId && (
                       <div className="mt-1 text-xs text-gray-400">
-                        실행자: {log.userId}
-                        {log.targetUserId && ` → 대상: ${log.targetUserId}`}
+                        실행자: {getUserName(log.userId)}
+                        {log.targetUserId && ` → 대상: ${getUserName(log.targetUserId)}`}
                         {log.eventId && ` | 이벤트: ${log.eventId}`}
                       </div>
                     )}
