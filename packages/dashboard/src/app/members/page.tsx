@@ -99,6 +99,7 @@ function MembersContent() {
     mutationFn: warnMember,
     onSuccess: () => {
       alert('경고 DM을 전송했습니다.');
+      queryClient.invalidateQueries({ queryKey: ['members'] });
     },
     onError: () => {
       alert('DM 전송에 실패했습니다.');
