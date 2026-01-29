@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 // 경량 컴포넌트 - 정적 임포트
 export { StatCard } from './stat-card';
 export { DataTable } from './data-table';
+export { MobileDataCard } from './mobile-data-card';
 export { Badge } from './badge';
 export { Button } from './button';
 export { Modal } from './modal';

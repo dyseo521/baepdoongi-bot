@@ -108,7 +108,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -124,11 +124,11 @@ export function Modal({
       <div
         ref={modalRef}
         className={clsx(
-          'relative bg-white rounded-xl shadow-xl w-full mx-4 my-8 overflow-hidden',
+          'relative bg-white rounded-xl shadow-xl w-full mx-0 sm:mx-4 my-2 sm:my-8 overflow-hidden',
           maxWidthClasses[maxWidth]
         )}
         style={{
-          maxHeight,
+          maxHeight: 'min(95vh, ' + maxHeight + ')',
           overscrollBehavior: 'contain',
         }}
       >
@@ -141,14 +141,14 @@ export function Modal({
         >
           <h2
             id="modal-title"
-            className="text-lg font-semibold text-gray-900 flex items-center gap-2"
+            className="text-lg font-semibold text-gray-900 flex items-center gap-2 pr-2"
           >
             {titleIcon}
-            {title}
+            <span className="truncate">{title}</span>
           </h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
             aria-label="모달 닫기"
           >
             <X className="w-5 h-5 text-gray-500" aria-hidden="true" />
@@ -156,7 +156,7 @@ export function Modal({
         </div>
 
         {/* Content - scrollable area */}
-        <div className="overflow-y-auto" style={{ maxHeight: `calc(${maxHeight} - 130px)` }}>
+        <div className="overflow-y-auto" style={{ maxHeight: `calc(min(95vh, ${maxHeight}) - 130px)` }}>
           {children}
         </div>
 
@@ -164,7 +164,7 @@ export function Modal({
         {footer && (
           <div
             className={clsx(
-              'flex items-center justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50',
+              'flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 p-4 border-t border-gray-200 bg-gray-50',
               stickyFooter && 'sticky bottom-0 z-10'
             )}
           >
