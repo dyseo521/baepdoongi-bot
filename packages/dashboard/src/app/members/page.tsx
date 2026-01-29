@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, AlertTriangle, CheckCircle, RefreshCw, MessageSquare, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
-import { DataTable, Badge, Button } from '@/components/ui';
+import { DataTable, Badge, Button, MobileDataCard } from '@/components/ui';
 import { fetchMembers, syncMembers, warnMember } from '@/lib/api';
 import type { Member } from '@baepdoongi/shared';
 
@@ -192,62 +192,117 @@ function MembersContent() {
     },
   ];
 
+  // 모바일 카드 렌더링
+  const renderMobileCard = (member: Member) => (
+    <MobileDataCard
+      title={member.displayName}
+      subtitle={member.email}
+      badge={
+        member.isNameValid ? (
+          <Badge variant="success">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            준수
+          </Badge>
+        ) : (
+          <Badge variant="error">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            미준수
+          </Badge>
+        )
+      }
+      metadata={[
+        { label: '실명', value: member.realName },
+        {
+          label: '경고 횟수',
+          value: (
+            <span className={member.warningCount > 0 ? 'text-red-600 font-medium' : ''}>
+              {member.warningCount}회
+            </span>
+          ),
+        },
+        {
+          label: '가입일',
+          value: new Date(member.joinedAt).toLocaleDateString('ko-KR'),
+        },
+      ]}
+      actions={
+        !member.isNameValid ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            leftIcon={<MessageSquare className="w-4 h-4" />}
+            onClick={() => handleWarn(member)}
+            disabled={warnMutation.isPending}
+            className="w-full"
+          >
+            경고 DM 전송
+          </Button>
+        ) : undefined
+      }
+    />
+  );
+
   return (
     <div>
       <PageHeader
         title="회원 관리"
         description="동아리 회원 목록 및 이름 형식 준수 현황"
         actions={
-          <div className="flex gap-2">
+          <>
             <Button
               variant="secondary"
+              size="sm"
               leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />}
               onClick={() => refetch()}
               disabled={isLoading}
               aria-label="회원 목록 새로고침"
             >
-              새로고침
+              <span className="hidden sm:inline">새로고침</span>
             </Button>
             <Button
               variant="secondary"
+              size="sm"
               leftIcon={<MessageSquare className="w-4 h-4" aria-hidden="true" />}
               onClick={handleWarnAll}
               disabled={warnMutation.isPending}
               aria-label="이름 형식 미준수 회원에게 전체 경고 DM 발송"
             >
-              미준수 전체 경고
+              <span className="hidden sm:inline">미준수 전체 경고</span>
+              <span className="sm:hidden">전체 경고</span>
             </Button>
             <Button
               variant="primary"
+              size="sm"
               leftIcon={<Download className="w-4 h-4" aria-hidden="true" />}
               onClick={() => syncMutation.mutate()}
               disabled={syncMutation.isPending}
               aria-label="Slack 회원 정보 DB 동기화"
             >
-              DB 동기화
+              <span className="hidden sm:inline">DB 동기화</span>
+              <span className="sm:hidden">동기화</span>
             </Button>
-          </div>
+          </>
         }
       />
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         {/* 요약 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="card p-4">
-            <div className="text-sm text-gray-500">전체 회원</div>
-            <div className="text-2xl font-bold text-gray-900">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+          <div className="card p-3 sm:p-4">
+            <div className="text-xs sm:text-sm text-gray-500">전체 회원</div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-900">
               {members.length}
             </div>
           </div>
-          <div className="card p-4">
-            <div className="text-sm text-gray-500">이름 형식 준수</div>
-            <div className="text-2xl font-bold text-green-600">
+          <div className="card p-3 sm:p-4">
+            <div className="text-xs sm:text-sm text-gray-500">형식 준수</div>
+            <div className="text-xl sm:text-2xl font-bold text-green-600">
               {members.filter((m) => m.isNameValid).length}
             </div>
           </div>
-          <div className="card p-4">
-            <div className="text-sm text-gray-500">이름 형식 미준수</div>
-            <div className="text-2xl font-bold text-red-600">
+          <div className="card p-3 sm:p-4">
+            <div className="text-xs sm:text-sm text-gray-500">형식 미준수</div>
+            <div className="text-xl sm:text-2xl font-bold text-red-600">
               {members.filter((m) => !m.isNameValid).length}
             </div>
           </div>
@@ -260,6 +315,7 @@ function MembersContent() {
           getRowKey={(member) => member.slackId}
           isLoading={isLoading}
           emptyMessage="등록된 회원이 없습니다."
+          mobileCardRender={renderMobileCard}
         />
       </div>
     </div>

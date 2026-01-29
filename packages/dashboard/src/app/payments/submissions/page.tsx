@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { AuthLayout, PageHeader } from '@/components/layout';
-import { DataTable, Badge, Button, Modal, SubmissionsPageSkeleton } from '@/components/ui';
+import { DataTable, Badge, Button, Modal, SubmissionsPageSkeleton, MobileDataCard } from '@/components/ui';
 import { fetchSubmissions, fetchDeposits, sendInviteEmail } from '@/lib/api';
 import type { Submission, Deposit, SubmissionStatus } from '@baepdoongi/shared';
 
@@ -210,6 +210,67 @@ function SubmissionsContent() {
     },
   ];
 
+  // 모바일 카드 렌더링
+  const renderMobileCard = (sub: Submission) => {
+    const config = statusConfig[sub.status];
+    const deposit = sub.matchedDepositId ? depositMap.get(sub.matchedDepositId) : null;
+
+    return (
+      <MobileDataCard
+        title={sub.name}
+        subtitle={`${sub.studentId} · ${sub.department || '-'}`}
+        badge={<Badge variant={config.variant}>{config.label}</Badge>}
+        metadata={[
+          { label: '학년', value: sub.grade || '-' },
+          { label: '이메일', value: sub.email || '-' },
+          {
+            label: '입금액',
+            value: deposit ? (
+              <span className="text-green-600 font-medium">
+                {new Intl.NumberFormat('ko-KR').format(deposit.amount)}원
+              </span>
+            ) : '-',
+          },
+          {
+            label: '메일',
+            value: sub.emailSent ? (
+              <span className="inline-flex items-center gap-1 text-green-600">
+                <MailCheck className="w-3.5 h-3.5" />
+                발송
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-gray-400">
+                <MailX className="w-3.5 h-3.5" />
+                미발송
+              </span>
+            ),
+          },
+          {
+            label: '제출일',
+            value: new Date(sub.submittedAt).toLocaleDateString('ko-KR'),
+          },
+        ]}
+        onClick={() => setSelectedSubmission(sub)}
+        actions={
+          sub.status === 'matched' && !sub.emailSent ? (
+            <Button
+              size="sm"
+              leftIcon={<Mail className="w-4 h-4" />}
+              onClick={(e) => {
+                e.stopPropagation();
+                sendEmailMutation.mutate(sub.submissionId);
+              }}
+              isLoading={sendEmailMutation.isPending}
+              className="w-full"
+            >
+              초대 메일 발송
+            </Button>
+          ) : undefined
+        }
+      />
+    );
+  };
+
   return (
     <div>
       <PageHeader
@@ -217,14 +278,14 @@ function SubmissionsContent() {
         description="구글 폼 지원서 목록 및 상태 관리"
         actions={
           <Link href="/payments">
-            <Button variant="ghost" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+            <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
               돌아가기
             </Button>
           </Link>
         }
       />
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         {/* 상태 필터 */}
         <div className="mb-6 flex gap-2 flex-wrap">
           <FilterButton active={filter === 'all'} onClick={() => setFilter('all')}>
@@ -232,19 +293,27 @@ function SubmissionsContent() {
           </FilterButton>
           <FilterButton active={filter === 'pending'} onClick={() => setFilter('pending')}>
             <Clock className="w-3 h-3" />
-            입금 대기 ({statusCounts.pending})
+            <span className="hidden sm:inline">입금 대기</span>
+            <span className="sm:hidden">대기</span>
+            ({statusCounts.pending})
           </FilterButton>
           <FilterButton active={filter === 'matched'} onClick={() => setFilter('matched')}>
             <CheckCircle className="w-3 h-3" />
-            입금 확인 ({statusCounts.matched})
+            <span className="hidden sm:inline">입금 확인</span>
+            <span className="sm:hidden">확인</span>
+            ({statusCounts.matched})
           </FilterButton>
           <FilterButton active={filter === 'invited'} onClick={() => setFilter('invited')}>
             <Mail className="w-3 h-3" />
-            초대 발송 ({statusCounts.invited})
+            <span className="hidden sm:inline">초대 발송</span>
+            <span className="sm:hidden">초대</span>
+            ({statusCounts.invited})
           </FilterButton>
           <FilterButton active={filter === 'joined'} onClick={() => setFilter('joined')}>
             <Users className="w-3 h-3" />
-            가입 완료 ({statusCounts.joined})
+            <span className="hidden sm:inline">가입 완료</span>
+            <span className="sm:hidden">완료</span>
+            ({statusCounts.joined})
           </FilterButton>
         </div>
 
@@ -254,6 +323,7 @@ function SubmissionsContent() {
           getRowKey={(sub) => sub.submissionId}
           isLoading={isLoading}
           emptyMessage="지원서가 없습니다."
+          mobileCardRender={renderMobileCard}
         />
       </div>
 
@@ -263,7 +333,7 @@ function SubmissionsContent() {
         onClose={() => setSelectedSubmission(null)}
         title="지원서 상세"
         footer={
-          <div className="flex gap-2 w-full">
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
             {selectedSubmission?.matchedDepositId && (
               <Button
                 variant="ghost"
@@ -291,7 +361,7 @@ function SubmissionsContent() {
         }
       >
         {selectedSubmission && (
-          <div className="p-6 space-y-4">
+          <div className="p-4 sm:p-6 space-y-4">
             <InfoRow label="이름" value={selectedSubmission.name} />
             <InfoRow label="학번" value={selectedSubmission.studentId} />
             <InfoRow label="학과" value={selectedSubmission.department || '-'} />
@@ -342,7 +412,7 @@ function SubmissionsContent() {
         titleIcon={<CreditCard className="w-5 h-5 text-green-600" />}
       >
         {selectedDeposit && (
-          <div className="p-6 space-y-4">
+          <div className="p-4 sm:p-6 space-y-4">
             <InfoRow label="입금자명" value={selectedDeposit.depositorName} />
             <InfoRow
               label="금액"
@@ -355,7 +425,7 @@ function SubmissionsContent() {
             />
             <div className="border-t pt-4 mt-4">
               <h4 className="font-medium text-gray-900 mb-2">원본 알림</h4>
-              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap break-all">
                 {selectedDeposit.rawNotification || '원본 알림 없음'}
               </p>
             </div>
@@ -378,7 +448,7 @@ function FilterButton({
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
+      className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors min-h-[36px] ${
         active
           ? 'bg-primary-50 text-primary-700 font-medium'
           : 'text-gray-600 hover:bg-gray-100'
@@ -399,9 +469,9 @@ function InfoRow({
   highlight?: boolean;
 }) {
   return (
-    <div className="flex justify-between py-2 border-b border-gray-100">
-      <span className="text-gray-500">{label}</span>
-      <span className={`font-medium ${highlight ? 'text-green-600' : 'text-gray-900'}`}>
+    <div className="flex justify-between py-2 border-b border-gray-100 gap-4">
+      <span className="text-gray-500 flex-shrink-0">{label}</span>
+      <span className={`font-medium text-right break-all ${highlight ? 'text-green-600' : 'text-gray-900'}`}>
         {value}
       </span>
     </div>

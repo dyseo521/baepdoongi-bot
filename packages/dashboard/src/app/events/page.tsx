@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, MapPin, Clock, Send, CheckCircle, Trash2, Pencil, Users, AlertCircle } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
-import { DataTable, Badge, Button, EventsPageSkeleton } from '@/components/ui';
+import { DataTable, Badge, Button, EventsPageSkeleton, MobileDataCard } from '@/components/ui';
 import { AnnounceModal, CreateEventModal, EditEventModal, RSVPListModal } from '@/components/events';
 import { fetchEvents, announceEvent, deleteEvent, createEvent, updateEvent } from '@/lib/api';
 import { formatEventDateTimeForDisplay } from '@/lib/utils';
@@ -324,6 +324,102 @@ function EventsContent() {
     },
   ];
 
+  // 모바일 카드 렌더링
+  const renderMobileCard = (event: Event) => {
+    const status = statusLabels[event.status] || { label: event.status, variant: 'default' as const };
+    return (
+      <MobileDataCard
+        title={event.title}
+        subtitle={typeLabels[event.type] || event.type}
+        badge={
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant={status.variant}>{status.label}</Badge>
+            {event.announcement ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                <CheckCircle className="w-3 h-3" />
+                공지됨
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
+                <AlertCircle className="w-3 h-3" />
+                대기
+              </span>
+            )}
+          </div>
+        }
+        metadata={[
+          {
+            label: '일시',
+            value: (
+              <span className="flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                {formatEventDateTimeForDisplay({
+                  ...(event.startDate && { startDate: event.startDate }),
+                  ...(event.endDate && { endDate: event.endDate }),
+                  ...(event.startTime && { startTime: event.startTime }),
+                  ...(event.endTime && { endTime: event.endTime }),
+                  ...(event.isMultiDay !== undefined && { isMultiDay: event.isMultiDay }),
+                  ...(event.hasTime !== undefined && { hasTime: event.hasTime }),
+                  datetime: event.datetime,
+                })}
+              </span>
+            ),
+          },
+          {
+            label: '장소',
+            value: (
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" />
+                {event.location || '-'}
+              </span>
+            ),
+          },
+        ]}
+        actions={
+          <>
+            {event.announcement ? (
+              <Button
+                size="sm"
+                variant="primary"
+                leftIcon={<Users className="w-3 h-3" />}
+                onClick={() => openRSVPModal(event)}
+                className="flex-1"
+              >
+                응답 현황
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                leftIcon={<Send className="w-3 h-3" />}
+                onClick={() => openAnnounceModal(event)}
+                disabled={event.status === 'cancelled'}
+                className="flex-1"
+              >
+                Slack 공지
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              leftIcon={<Pencil className="w-4 h-4" />}
+              onClick={() => openEditModal(event)}
+              aria-label="수정"
+            />
+            <Button
+              size="sm"
+              variant="danger"
+              leftIcon={<Trash2 className="w-4 h-4" />}
+              onClick={() => handleDelete(event.eventId, event.title)}
+              disabled={deleteMutation.isPending}
+              aria-label="삭제"
+            />
+          </>
+        }
+      />
+    );
+  };
+
   return (
     <div>
       <PageHeader
@@ -339,13 +435,14 @@ function EventsContent() {
         }
       />
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <DataTable
           data={events}
           columns={columns}
           getRowKey={(event) => event.eventId}
           isLoading={isLoading}
           emptyMessage="등록된 이벤트가 없습니다."
+          mobileCardRender={renderMobileCard}
         />
       </div>
 
