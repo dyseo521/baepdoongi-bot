@@ -164,7 +164,7 @@ export function Modal({
         {footer && (
           <div
             className={clsx(
-              'flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 p-4 border-t border-gray-200 bg-gray-50',
+              'flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 p-4 pb-5 border-t border-gray-200 bg-gray-50',
               stickyFooter && 'sticky bottom-0 z-10'
             )}
           >
