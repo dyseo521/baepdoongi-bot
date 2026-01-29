@@ -88,7 +88,7 @@ export class BotStack extends cdk.Stack {
         RAG_QUEUE_URL: ragQueue.queueUrl,
         DM_QUEUE_URL: dmQueue.queueUrl,
         SES_FROM_EMAIL: 'weareigrus@gmail.com',
-        SLACK_INVITE_LINK: 'https://join.slack.com/t/igrus/shared_invite/xxx', // 실제 링크로 변경 필요
+        SLACK_INVITE_LINK: 'https://join.slack.com/t/26-1igrus/shared_invite/zt-3oqsbieuc-KOwV0_s6X3M8SEZO6mkgGw',
       },
       architecture: lambda.Architecture.ARM_64,
     });
