@@ -26,6 +26,7 @@ import {
   manualMatch,
   sendSubmissionInvite,
   getPaymentStats,
+  unmatchSubmission,
 } from '../../services/payment.service.js';
 
 // Slack 워크스페이스 초대 링크 (환경 변수에서 가져오거나 설정)
@@ -65,6 +66,11 @@ export async function handlePayments(
   // POST /api/payments/invite
   if (subPath === '/invite' && method === 'POST') {
     return handleSendInvite(event);
+  }
+
+  // POST /api/payments/unmatch
+  if (subPath === '/unmatch' && method === 'POST') {
+    return handleUnmatch(event);
   }
 
   // DELETE /api/payments/submissions/:submissionId
@@ -167,6 +173,32 @@ async function handleSendInvite(
   } catch (error) {
     console.error('[Payments API] Invite Error:', error);
     return createErrorResponse(500, 'Failed to send invite');
+  }
+}
+
+async function handleUnmatch(
+  event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> {
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { submissionId } = body;
+
+    if (!submissionId) {
+      return createErrorResponse(400, 'submissionId가 필요합니다');
+    }
+
+    const result = await unmatchSubmission(submissionId, 'dashboard');
+
+    console.log(`[Payments API] Unmatch completed: ${submissionId}`);
+    return createResponse(200, {
+      success: true,
+      submission: result.submission,
+      deposit: result.deposit,
+    });
+  } catch (error) {
+    console.error('[Payments API] Unmatch Error:', error);
+    const message = error instanceof Error ? error.message : '매칭 해제에 실패했습니다';
+    return createErrorResponse(400, message);
   }
 }
 

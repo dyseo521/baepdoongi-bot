@@ -72,6 +72,7 @@ export type LogType =
   | 'PAYMENT_MATCH_FAILED' // 매칭 실패
   | 'SUBMISSION_DELETE' // 지원서 삭제
   | 'DEPOSIT_DELETE' // 입금 삭제
+  | 'PAYMENT_UNMATCH' // 매칭 해제
   | 'INVITE_EMAIL_SENT' // 초대 이메일 발송
   | 'INVITE_EMAIL_FAILED' // 이메일 발송 실패
   // 시스템 관련
@@ -125,6 +126,7 @@ export const LOG_TYPE_LABELS: Record<LogType, string> = {
   PAYMENT_MATCH_FAILED: '매칭 실패',
   SUBMISSION_DELETE: '지원서 삭제',
   DEPOSIT_DELETE: '입금 삭제',
+  PAYMENT_UNMATCH: '매칭 해제',
   INVITE_EMAIL_SENT: '초대 이메일 발송',
   INVITE_EMAIL_FAILED: '이메일 발송 실패',
   // 시스템 관련

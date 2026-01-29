@@ -423,6 +423,74 @@ export async function sendSubmissionInvite(
 }
 
 /**
+ * 매칭된 지원서와 입금의 매칭을 해제합니다.
+ * - 지원서: matched → pending (입금 대기)
+ * - 입금: matched → pending (매칭 대기)
+ * - Match 레코드는 이력 보존을 위해 유지
+ */
+export async function unmatchSubmission(
+  submissionId: string,
+  unmatchedBy: string
+): Promise<{ submission: Submission; deposit: Deposit }> {
+  const submission = await getSubmission(submissionId);
+
+  if (!submission) {
+    throw new Error('지원서를 찾을 수 없습니다.');
+  }
+
+  if (submission.status !== 'matched') {
+    throw new Error('matched 상태의 지원서만 매칭 해제할 수 있습니다.');
+  }
+
+  if (!submission.matchedDepositId) {
+    throw new Error('매칭된 입금 정보가 없습니다.');
+  }
+
+  const deposit = await getDeposit(submission.matchedDepositId);
+
+  if (!deposit) {
+    throw new Error('매칭된 입금 정보를 찾을 수 없습니다.');
+  }
+
+  const depositId = submission.matchedDepositId;
+
+  // 지원서 상태를 pending으로 변경하고 매칭 관련 필드 제거
+  await updateSubmissionStatus(submissionId, 'pending', {
+    matchedDepositId: undefined,
+    matchedAt: undefined,
+  });
+
+  // 입금 상태를 pending으로 변경하고 매칭 관련 필드 제거
+  await updateDepositStatus(depositId, 'pending', {
+    matchedSubmissionId: undefined,
+    matchedAt: undefined,
+  });
+
+  // 활동 로그 기록
+  await saveLog({
+    logId: `log_${randomUUID()}`,
+    type: 'PAYMENT_UNMATCH',
+    userId: unmatchedBy,
+    details: {
+      submissionId,
+      depositId,
+      submissionName: submission.name,
+      depositorName: deposit.depositorName,
+      amount: deposit.amount,
+    },
+  });
+
+  // 업데이트된 지원서/입금 반환
+  const updatedSubmission = await getSubmission(submissionId);
+  const updatedDeposit = await getDeposit(depositId);
+
+  return {
+    submission: updatedSubmission!,
+    deposit: updatedDeposit!,
+  };
+}
+
+/**
  * 결제 통계를 조회합니다.
  */
 export async function getPaymentStats(): Promise<PaymentStats> {
