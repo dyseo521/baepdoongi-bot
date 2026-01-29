@@ -27,10 +27,12 @@ export async function handleLogs(
 
     const { logs, hasMore } = await getActivityLogs({ limit, type });
     const todayCount = await getTodayLogCount();
+    const totalCount = await getTotalLogCount(type);
 
     return createResponse(200, {
       logs,
       todayCount,
+      totalCount,
       hasMore,
     });
   } catch (error) {
@@ -101,5 +103,20 @@ async function getTodayLogCount(): Promise<number> {
     })
   );
 
+  return result.Count || 0;
+}
+
+async function getTotalLogCount(type?: LogType): Promise<number> {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: type ? 'GSI2' : 'GSI1',
+      KeyConditionExpression: type ? 'GSI2PK = :pk' : 'GSI1PK = :pk',
+      ExpressionAttributeValues: {
+        ':pk': type ? `LOG#${type}` : 'LOG',
+      },
+      Select: 'COUNT',
+    })
+  );
   return result.Count || 0;
 }

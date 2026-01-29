@@ -187,6 +187,7 @@ export async function updateSuggestionStatus(
 export async function fetchLogs(options?: { limit?: number; type?: string }): Promise<{
   logs: ActivityLog[];
   todayCount: number;
+  totalCount: number;
   hasMore: boolean;
 }> {
   if (IS_MOCK) {

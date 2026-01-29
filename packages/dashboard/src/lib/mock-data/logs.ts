@@ -123,7 +123,7 @@ export const logs: ActivityLog[] = baseLogs;
 export function generateLogsResponse(options?: {
   limit?: number;
   type?: string;
-}): { logs: ActivityLog[]; todayCount: number; hasMore: boolean } {
+}): { logs: ActivityLog[]; todayCount: number; totalCount: number; hasMore: boolean } {
   let filteredLogs = [...baseLogs];
 
   // 타입 필터
@@ -135,6 +135,9 @@ export function generateLogsResponse(options?: {
   const today = '2026-01-29';
   const todayCount = baseLogs.filter((log) => log.createdAt.startsWith(today)).length;
 
+  // 전체 로그 수 (필터링 전 또는 후 기준)
+  const totalCount = filteredLogs.length;
+
   // limit 적용
   const limit = options?.limit || 20;
   const hasMore = filteredLogs.length > limit;
@@ -142,6 +145,7 @@ export function generateLogsResponse(options?: {
   return {
     logs: filteredLogs.slice(0, limit),
     todayCount,
+    totalCount,
     hasMore,
   };
 }
