@@ -314,6 +314,20 @@ export async function deleteDeposit(depositId: string): Promise<void> {
   });
 }
 
+// Unmatch Submission (매칭 해제)
+export async function unmatchSubmission(submissionId: string): Promise<void> {
+  if (IS_MOCK) {
+    const mock = await import('./mock-data');
+    await mock.mockDelay(300);
+    console.log(`[Mock] Submission ${submissionId} unmatched`);
+    return;
+  }
+  await fetchAPI('/payments/unmatch', {
+    method: 'POST',
+    body: JSON.stringify({ submissionId }),
+  });
+}
+
 // Slack Channels
 export async function fetchSlackChannels(): Promise<SlackChannel[]> {
   if (IS_MOCK) {

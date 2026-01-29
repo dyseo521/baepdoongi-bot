@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard, RotateCw } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard, RotateCw, Unlink } from 'lucide-react';
 import Link from 'next/link';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, Modal, SubmissionsPageSkeleton, MobileDataCard } from '@/components/ui';
-import { fetchSubmissions, fetchDeposits, sendInviteEmail } from '@/lib/api';
+import { fetchSubmissions, fetchDeposits, sendInviteEmail, unmatchSubmission } from '@/lib/api';
 import type { Submission, Deposit, SubmissionStatus } from '@baepdoongi/shared';
 
 const statusConfig: Record<SubmissionStatus, { label: string; variant: 'success' | 'warning' | 'info' | 'default' }> = {
@@ -29,6 +29,7 @@ function SubmissionsContent() {
   const [filter, setFilter] = useState<SubmissionStatus | 'all'>('all');
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
+  const [unmatchConfirmSubmission, setUnmatchConfirmSubmission] = useState<Submission | null>(null);
 
   const { data: submissions = [], isLoading: isLoadingSubmissions, isError, error } = useQuery<Submission[]>({
     queryKey: ['submissions'],
@@ -70,6 +71,21 @@ function SubmissionsContent() {
     onError: (error) => {
       console.error('초대 메일 발송 실패:', error);
       alert('초대 메일 발송에 실패했습니다.');
+    },
+  });
+
+  const unmatchMutation = useMutation({
+    mutationFn: (submissionId: string) => unmatchSubmission(submissionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['deposits'] });
+      setSelectedSubmission(null);
+      setUnmatchConfirmSubmission(null);
+      alert('매칭이 해제되었습니다.');
+    },
+    onError: (error) => {
+      console.error('매칭 해제 실패:', error);
+      alert('매칭 해제에 실패했습니다.');
     },
   });
 
@@ -365,43 +381,57 @@ function SubmissionsContent() {
         onClose={() => setSelectedSubmission(null)}
         title="지원서 상세"
         footer={
-          <div className="flex flex-col sm:flex-row gap-2 w-full">
-            {selectedSubmission?.matchedDepositId && (
-              <Button
-                variant="ghost"
-                className="flex-1"
-                leftIcon={<CreditCard className="w-4 h-4" />}
-                onClick={() => {
-                  const deposit = depositMap.get(selectedSubmission.matchedDepositId!);
-                  if (deposit) setSelectedDeposit(deposit);
-                }}
-              >
-                입금 정보 보기
-              </Button>
-            )}
-            {/* 최초 발송 */}
-            {selectedSubmission?.status === 'matched' && !selectedSubmission?.emailSent && (
-              <Button
-                className="flex-1"
-                leftIcon={<Mail className="w-4 h-4" />}
-                onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
-                isLoading={sendEmailMutation.isPending}
-              >
-                초대 메일 발송
-              </Button>
-            )}
-            {/* 재전송 */}
-            {(selectedSubmission?.status === 'invited' || selectedSubmission?.emailSent) && (
-              <Button
-                className="flex-1"
-                variant="secondary"
-                leftIcon={<RotateCw className="w-4 h-4" />}
-                onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
-                isLoading={sendEmailMutation.isPending}
-              >
-                재전송
-              </Button>
-            )}
+          <div className="flex items-center justify-between gap-2 w-full">
+            {/* 왼쪽: 정보 조회 버튼 */}
+            <div>
+              {selectedSubmission?.matchedDepositId && (
+                <Button
+                  variant="ghost"
+                  leftIcon={<CreditCard className="w-4 h-4" />}
+                  onClick={() => {
+                    const deposit = depositMap.get(selectedSubmission.matchedDepositId!);
+                    if (deposit) setSelectedDeposit(deposit);
+                  }}
+                >
+                  입금 보기
+                </Button>
+              )}
+            </div>
+            {/* 오른쪽: 액션 버튼들 */}
+            <div className="flex items-center gap-2">
+              {/* 매칭 해제 - matched 상태에서만 표시 */}
+              {selectedSubmission?.status === 'matched' && (
+                <Button
+                  variant="ghost"
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  leftIcon={<Unlink className="w-4 h-4" />}
+                  onClick={() => setUnmatchConfirmSubmission(selectedSubmission)}
+                >
+                  매칭 해제
+                </Button>
+              )}
+              {/* 최초 발송 */}
+              {selectedSubmission?.status === 'matched' && !selectedSubmission?.emailSent && (
+                <Button
+                  leftIcon={<Mail className="w-4 h-4" />}
+                  onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
+                  isLoading={sendEmailMutation.isPending}
+                >
+                  초대 발송
+                </Button>
+              )}
+              {/* 재전송 */}
+              {(selectedSubmission?.status === 'invited' || selectedSubmission?.emailSent) && (
+                <Button
+                  variant="secondary"
+                  leftIcon={<RotateCw className="w-4 h-4" />}
+                  onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
+                  isLoading={sendEmailMutation.isPending}
+                >
+                  재전송
+                </Button>
+              )}
+            </div>
           </div>
         }
       >
@@ -474,6 +504,59 @@ function SubmissionsContent() {
                 {selectedDeposit.rawNotification || '원본 알림 없음'}
               </p>
             </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* 매칭 해제 확인 모달 */}
+      <Modal
+        isOpen={!!unmatchConfirmSubmission}
+        onClose={() => setUnmatchConfirmSubmission(null)}
+        title="매칭 해제"
+        titleIcon={<Unlink className="w-5 h-5 text-red-600" />}
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button
+              variant="ghost"
+              className="flex-1"
+              onClick={() => setUnmatchConfirmSubmission(null)}
+            >
+              취소
+            </Button>
+            <Button
+              variant="danger"
+              className="flex-1"
+              onClick={() => {
+                if (unmatchConfirmSubmission) {
+                  unmatchMutation.mutate(unmatchConfirmSubmission.submissionId);
+                }
+              }}
+              isLoading={unmatchMutation.isPending}
+            >
+              매칭 해제
+            </Button>
+          </div>
+        }
+      >
+        {unmatchConfirmSubmission && (
+          <div className="p-4 sm:p-6">
+            <p className="text-gray-700 mb-4">
+              <span className="font-medium">{unmatchConfirmSubmission.name}</span>님의 매칭을 해제하시겠습니까?
+            </p>
+            <ul className="text-sm text-gray-600 space-y-1.5">
+              <li className="flex items-start gap-2">
+                <span className="text-gray-400">•</span>
+                <span>지원서가 &quot;입금 대기&quot;로 변경됩니다</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-gray-400">•</span>
+                <span>연결된 입금이 &quot;매칭 대기&quot;로 변경됩니다</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-gray-400">•</span>
+                <span>다른 지원서와 재매칭 가능합니다</span>
+              </li>
+            </ul>
           </div>
         )}
       </Modal>
