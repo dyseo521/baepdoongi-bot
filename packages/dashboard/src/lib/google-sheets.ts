@@ -1,8 +1,8 @@
 /**
- * 구글 시트 연동
+ * 구글 시트 연동 유틸리티
  *
- * 구글 폼 응답이 저장된 구글 시트에서 지원서 데이터를 가져옵니다.
- * TODO: Google Sheets API 연동 구현
+ * NOTE: 지원서 데이터는 Google Forms → Apps Script 웹훅으로 수신됨.
+ * 이 파일은 수동 동기화가 필요할 때를 위한 유틸리티 함수 모음.
  */
 
 import type { CreateSubmissionInput } from '@baepdoongi/shared';
@@ -26,15 +26,9 @@ interface GoogleSheetRow {
 export async function fetchNewSubmissionsFromSheet(
   lastSyncTimestamp?: string
 ): Promise<CreateSubmissionInput[]> {
-  // TODO: Google Sheets API 연동 구현
-  // 1. 서비스 계정 인증
-  // 2. 시트 데이터 읽기
-  // 3. 마지막 동기화 이후 데이터 필터링
-  // 4. CreateSubmissionInput 형식으로 변환
-
+  // NOTE: 현재 미사용 - 웹훅으로 실시간 수신 중
+  // 수동 동기화 필요 시 Google Sheets API 연동 구현
   console.log('[GoogleSheets] Fetching new submissions since:', lastSyncTimestamp);
-
-  // 더미 데이터 반환 (개발용)
   return [];
 }
 
