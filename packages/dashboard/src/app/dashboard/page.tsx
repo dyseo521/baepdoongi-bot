@@ -85,20 +85,22 @@ function DashboardContent() {
     <div>
       <PageHeader title="대시보드" />
 
-      <div className="p-8 space-y-8">
+      <div className="p-4 sm:p-8 space-y-4 sm:space-y-8">
         {/* 통계 카드 그리드 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-6">
           <StatCard
             icon={Users}
             title="전체 회원"
             value={statsLoading ? '-' : stats?.totalMembers ?? 0}
             changeLabel="명"
+            compact
           />
           <StatCard
             icon={Calendar}
-            title="예정된 이벤트"
+            title="예정 이벤트"
             value={statsLoading ? '-' : stats?.activeEvents ?? 0}
             changeLabel="개"
+            compact
           />
           <StatCard
             icon={MessageSquare}
@@ -106,17 +108,19 @@ function DashboardContent() {
             value={statsLoading ? '-' : stats?.pendingSuggestions ?? 0}
             changeLabel="건"
             variant={stats?.pendingSuggestions ? 'warning' : 'default'}
+            compact
           />
         </div>
 
         {/* 일별 트렌드 차트 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-2 sm:gap-6">
           <ChartCard
             title="일별 가입 회원"
             icon={UserPlus}
             period={membersPeriod}
             onPeriodChange={setMembersPeriod}
             isLoading={membersTrendsLoading}
+            compact
           >
             {membersTrends && (
               <TrendsChart
@@ -133,6 +137,7 @@ function DashboardContent() {
             period={ragPeriod}
             onPeriodChange={setRagPeriod}
             isLoading={ragTrendsLoading}
+            compact
           >
             {ragTrends && (
               <TrendsChart
