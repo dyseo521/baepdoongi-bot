@@ -88,7 +88,6 @@ export function verifyAuth(event: APIGatewayProxyEvent): boolean {
   const sessionToken = cookies['baepdoongi_session'];
 
   // 세션 토큰이 존재하면 인증됨으로 간주
-  // TODO: 토큰 유효성 검증 (만료 시간 등)
   return !!sessionToken;
 }
 
