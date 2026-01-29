@@ -6,6 +6,7 @@
  */
 
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { randomUUID } from 'crypto';
 import { handleAuth } from './auth.handler.js';
 import { handleMembers } from './members.handler.js';
 import { handleEvents } from './events.handler.js';
@@ -14,6 +15,7 @@ import { handleStats, handleStatsTrends } from './stats.handler.js';
 import { handleSuggestions } from './suggestions.handler.js';
 import { handleSlackChannels } from './slack-channels.handler.js';
 import { handlePayments } from './payments.handler.js';
+import { saveLog } from '../../services/db.service.js';
 
 // 허용된 CORS Origin 목록
 const ALLOWED_ORIGINS = [
@@ -167,6 +169,23 @@ export async function handleApiRequest(
     return createErrorResponse(404, `Unknown API path: ${apiPath}`);
   } catch (error) {
     console.error('[API] Error:', error);
+
+    // API 오류 로그 기록
+    try {
+      await saveLog({
+        logId: `log_${randomUUID()}`,
+        type: 'API_ERROR',
+        userId: 'system',
+        details: {
+          path,
+          method: httpMethod,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    } catch (logError) {
+      console.error('[API] Failed to save error log:', logError);
+    }
+
     return createErrorResponse(500, 'Internal server error');
   }
 }
