@@ -197,6 +197,18 @@ IGRUS 슬랙 워크스페이스의 *이름 형식*이 올바르지 않아 안내
       return createErrorResponse(500, 'DM 전송 실패');
     }
 
+    const now = new Date().toISOString();
+
+    // warningCount 증가
+    const member = await getMember(memberId);
+    if (member) {
+      await saveMember({
+        ...member,
+        warningCount: (member.warningCount || 0) + 1,
+        lastWarningAt: now,
+      });
+    }
+
     await saveLog({
       logId: `log_${randomUUID()}`,
       type: 'NAME_WARNING_SENT',
@@ -204,6 +216,7 @@ IGRUS 슬랙 워크스페이스의 *이름 형식*이 올바르지 않아 안내
       targetUserId: memberId,
       details: {
         reason: '이름 형식 미준수',
+        warningCount: member ? (member.warningCount || 0) + 1 : 1,
       },
     });
 

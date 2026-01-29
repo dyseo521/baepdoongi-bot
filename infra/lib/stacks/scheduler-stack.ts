@@ -7,6 +7,7 @@
  */
 
 import * as cdk from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -23,16 +24,11 @@ export class SchedulerStack extends cdk.Stack {
 
     const { nameCheckerLambda } = props;
 
-    // 이름 형식 검사 스케줄 (3일마다 오전 9시 KST = UTC 00:00)
+    // 이름 형식 검사 스케줄 (3일마다)
     const nameCheckRule = new events.Rule(this, 'NameCheckRule', {
       ruleName: 'baepdoongi-name-check',
       description: '3일마다 이름 형식 미준수 회원 검사 및 경고 발송',
-      // 매주 월, 목요일 오전 9시 (KST)
-      schedule: events.Schedule.cron({
-        minute: '0',
-        hour: '0', // UTC 00:00 = KST 09:00
-        weekDay: 'MON,THU',
-      }),
+      schedule: events.Schedule.rate(Duration.days(3)),
       enabled: true,
     });
 
@@ -55,7 +51,7 @@ export class SchedulerStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'ScheduleInfo', {
-      value: '매주 월/목 오전 9시 (KST)에 이름 형식 검사 실행',
+      value: '3일마다 이름 형식 검사 실행',
       description: '스케줄 정보',
     });
   }
