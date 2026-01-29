@@ -65,6 +65,7 @@ function SubmissionsContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
       setSelectedSubmission(null);
+      alert('초대 메일이 발송되었습니다.');
     },
     onError: (error) => {
       console.error('초대 메일 발송 실패:', error);
