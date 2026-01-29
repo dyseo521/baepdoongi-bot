@@ -213,20 +213,20 @@ function LogsContent() {
 
       <div className="p-8">
         {/* 요약 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="card p-4">
-            <div className="text-sm text-gray-500">오늘 활동</div>
-            <div className="text-2xl font-bold text-gray-900">{todayCount}</div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
+          <div className="card p-2 sm:p-4">
+            <div className="text-[10px] sm:text-sm text-gray-500">오늘 활동</div>
+            <div className="text-lg sm:text-2xl font-bold text-gray-900">{todayCount}</div>
           </div>
-          <div className="card p-4">
-            <div className="text-sm text-gray-500">전체 로그</div>
-            <div className="text-2xl font-bold text-gray-900">{logs.length}</div>
+          <div className="card p-2 sm:p-4">
+            <div className="text-[10px] sm:text-sm text-gray-500">전체 로그</div>
+            <div className="text-lg sm:text-2xl font-bold text-gray-900">{logs.length}</div>
           </div>
-          <div className="card p-4">
-            <div className="text-sm text-gray-500">필터된 로그</div>
-            <div className="text-2xl font-bold text-primary-600">{filteredLogs.length}</div>
+          <div className="card p-2 sm:p-4">
+            <div className="text-[10px] sm:text-sm text-gray-500">필터된 로그</div>
+            <div className="text-lg sm:text-2xl font-bold text-primary-600">{filteredLogs.length}</div>
           </div>
-          <div className="card p-4">
+          <div className="card p-2 sm:p-4 hidden sm:block">
             <label htmlFor="log-limit" className="text-sm text-gray-500">
               표시 개수
             </label>

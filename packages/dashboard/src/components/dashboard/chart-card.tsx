@@ -40,7 +40,7 @@ export function ChartCard({
           )} />
           <span className={compact ? 'hidden sm:inline' : ''}>{title}</span>
           <span className={compact ? 'sm:hidden' : 'hidden'}>
-            {title.split(' ')[0]}
+            {title.split(' ').slice(0, 2).join(' ')}
           </span>
         </h3>
         <div className={clsx(

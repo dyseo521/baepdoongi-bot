@@ -122,28 +122,49 @@ function MatchingContent() {
       />
 
       <div className="p-8">
-        {/* 설정 및 매칭 버튼 */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoSendEmail}
-                onChange={(e) => setAutoSendEmail(e.target.checked)}
-                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-              />
-              <span className="text-sm text-gray-700">
-                <Mail className="w-4 h-4 inline mr-1" />
-                매칭 시 자동 초대 메일 발송
-              </span>
-            </label>
+        {/* 매칭 대기 현황 */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
+          <div className="card p-2 sm:p-4">
+            <div className="flex items-center gap-1 sm:gap-2 text-yellow-600 mb-1 sm:mb-2">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="font-medium text-xs sm:text-base">입금 대기 지원서</span>
+            </div>
+            <div className="text-xl sm:text-3xl font-bold text-gray-900">
+              {pendingSubmissions.length}
+            </div>
           </div>
+          <div className="card p-2 sm:p-4">
+            <div className="flex items-center gap-1 sm:gap-2 text-yellow-600 mb-1 sm:mb-2">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="font-medium text-xs sm:text-base">매칭 대기 입금</span>
+            </div>
+            <div className="text-xl sm:text-3xl font-bold text-gray-900">
+              {pendingDeposits.length}
+            </div>
+          </div>
+        </div>
+
+        {/* 설정 및 매칭 버튼 */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoSendEmail}
+              onChange={(e) => setAutoSendEmail(e.target.checked)}
+              className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+            />
+            <span className="text-xs sm:text-sm text-gray-700">
+              <Mail className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+              <span className="hidden sm:inline">매칭 시 </span>자동 초대 메일 발송
+            </span>
+          </label>
 
           <Button
             onClick={handleMatch}
             disabled={!canMatch}
             isLoading={matchMutation.isPending}
             leftIcon={<ArrowRightLeft className="w-4 h-4" />}
+            className="w-full sm:w-auto"
           >
             선택 항목 매칭
           </Button>
@@ -180,28 +201,6 @@ function MatchingContent() {
             </div>
           </div>
         )}
-
-        {/* 매칭 대기 현황 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="card p-4">
-            <div className="flex items-center gap-2 text-yellow-600 mb-2">
-              <Clock className="w-5 h-5" />
-              <span className="font-medium">입금 대기 지원서</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {pendingSubmissions.length}
-            </div>
-          </div>
-          <div className="card p-4">
-            <div className="flex items-center gap-2 text-yellow-600 mb-2">
-              <Clock className="w-5 h-5" />
-              <span className="font-medium">매칭 대기 입금</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {pendingDeposits.length}
-            </div>
-          </div>
-        </div>
 
         {/* 매칭 인터페이스 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
