@@ -99,30 +99,26 @@ function PaymentsContent() {
               <FileText className="w-5 h-5 text-primary-600" />
               지원서 상태별 현황
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-1">
               <StatusRow
                 icon={Clock}
                 label="입금 대기"
                 count={stats?.submissionsByStatus.pending ?? 0}
-                color="yellow"
               />
               <StatusRow
                 icon={CheckCircle}
                 label="입금 확인"
                 count={stats?.submissionsByStatus.matched ?? 0}
-                color="green"
               />
               <StatusRow
                 icon={Mail}
                 label="초대 발송"
                 count={stats?.submissionsByStatus.invited ?? 0}
-                color="blue"
               />
               <StatusRow
                 icon={Users}
                 label="가입 완료"
                 count={stats?.submissionsByStatus.joined ?? 0}
-                color="primary"
               />
             </div>
           </div>
@@ -133,24 +129,21 @@ function PaymentsContent() {
               <CreditCard className="w-5 h-5 text-primary-600" />
               입금 상태별 현황
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-1">
               <StatusRow
                 icon={Clock}
                 label="매칭 대기"
                 count={stats?.depositsByStatus.pending ?? 0}
-                color="yellow"
               />
               <StatusRow
                 icon={CheckCircle}
                 label="매칭 완료"
                 count={stats?.depositsByStatus.matched ?? 0}
-                color="green"
               />
               <StatusRow
                 icon={Clock}
                 label="만료됨"
                 count={stats?.depositsByStatus.expired ?? 0}
-                color="gray"
               />
             </div>
           </div>
@@ -166,18 +159,16 @@ function PaymentsContent() {
             compact
           />
           <StatCard
-            icon={CreditCard}
+            icon={Clock}
             title="입금 대기"
             value={isLoading ? '-' : stats?.submissionsByStatus.pending ?? 0}
             changeLabel="건"
-            variant="warning"
             compact
           />
           <StatCard
             icon={TrendingUp}
             title="자동 매칭률"
             value={isLoading ? '-' : `${stats?.autoMatchRate ?? 0}%`}
-            variant="success"
             compact
           />
           <StatCard
@@ -196,30 +187,20 @@ function StatusRow({
   icon: Icon,
   label,
   count,
-  color,
 }: {
   icon: React.ElementType;
   label: string;
   count: number;
-  color: string;
 }) {
-  const colorClasses: Record<string, string> = {
-    yellow: 'text-yellow-600 bg-yellow-50',
-    green: 'text-green-600 bg-green-50',
-    blue: 'text-blue-600 bg-blue-50',
-    primary: 'text-primary-600 bg-primary-50',
-    gray: 'text-gray-600 bg-gray-50',
-  };
-
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between py-2.5 border-b border-blue-50 last:border-0">
       <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
+        <div className="p-2 rounded-lg bg-blue-50 text-blue-400">
           <Icon className="w-4 h-4" />
         </div>
-        <span className="text-gray-700">{label}</span>
+        <span className="text-gray-600">{label}</span>
       </div>
-      <span className="font-semibold text-gray-900">{count}</span>
+      <span className="font-semibold text-gray-900 tabular-nums">{count}</span>
     </div>
   );
 }
