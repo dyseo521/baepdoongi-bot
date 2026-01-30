@@ -86,9 +86,9 @@ function SuggestionsContent() {
       render: (suggestion: Suggestion) => {
         const CategoryIcon = categoryIcons[suggestion.category] || ClipboardList;
         return (
-          <span className="text-sm inline-flex items-center gap-1">
-            <CategoryIcon className="w-4 h-4 text-gray-400" />
-            {categoryLabels[suggestion.category] || suggestion.category}
+          <span className="text-sm inline-flex items-center gap-1.5 -ml-1">
+            <CategoryIcon className="w-4 h-4 text-gray-400 shrink-0" />
+            <span className="translate-y-px">{categoryLabels[suggestion.category] || suggestion.category}</span>
           </span>
         );
       },
@@ -152,9 +152,9 @@ function SuggestionsContent() {
           (() => {
             const CategoryIcon = categoryIcons[suggestion.category] || ClipboardList;
             return (
-              <span className="text-gray-500 inline-flex items-center gap-1">
-                <CategoryIcon className="w-4 h-4 text-gray-400" />
-                {categoryLabels[suggestion.category]}
+              <span className="text-gray-500 inline-flex items-center gap-1.5 -ml-1">
+                <CategoryIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                <span className="translate-y-px">{categoryLabels[suggestion.category]}</span>
               </span>
             );
           })()
@@ -246,9 +246,9 @@ function SuggestionsContent() {
               {(() => {
                 const CategoryIcon = categoryIcons[selectedSuggestion.category] || ClipboardList;
                 return (
-                  <span className="text-sm text-gray-500 inline-flex items-center gap-1">
-                    <CategoryIcon className="w-4 h-4 text-gray-400" />
-                    {categoryLabels[selectedSuggestion.category]}
+                  <span className="text-sm text-gray-500 inline-flex items-center gap-1.5 -ml-1">
+                    <CategoryIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                    <span className="translate-y-px">{categoryLabels[selectedSuggestion.category]}</span>
                   </span>
                 );
               })()}
