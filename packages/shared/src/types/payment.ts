@@ -67,6 +67,9 @@ export interface Submission {
   /** Slack 가입 완료 시각 (ISO 8601) */
   joinedAt?: string;
 
+  /** 가입한 Slack 사용자 ID */
+  slackId?: string;
+
   /** 레코드 생성 시각 (ISO 8601) */
   createdAt: string;
 

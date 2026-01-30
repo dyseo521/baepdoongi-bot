@@ -75,6 +75,7 @@ export type LogType =
   | 'PAYMENT_UNMATCH' // 매칭 해제
   | 'INVITE_EMAIL_SENT' // 초대 이메일 발송
   | 'INVITE_EMAIL_FAILED' // 이메일 발송 실패
+  | 'SUBMISSION_JOINED' // Slack 가입 완료
   // 시스템 관련
   | 'SYSTEM_START' // 봇 시작
   | 'SYSTEM_ERROR' // 시스템 오류
@@ -129,6 +130,7 @@ export const LOG_TYPE_LABELS: Record<LogType, string> = {
   PAYMENT_UNMATCH: '매칭 해제',
   INVITE_EMAIL_SENT: '초대 이메일 발송',
   INVITE_EMAIL_FAILED: '이메일 발송 실패',
+  SUBMISSION_JOINED: 'Slack 가입 완료',
   // 시스템 관련
   SYSTEM_START: '봇 시작',
   SYSTEM_ERROR: '시스템 오류',
