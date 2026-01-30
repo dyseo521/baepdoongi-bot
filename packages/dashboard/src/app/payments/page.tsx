@@ -45,37 +45,54 @@ function PaymentsContent() {
         description="회비 납부 현황 및 지원서 매칭 관리"
       />
 
-      <div className="p-8">
-        {/* 통계 카드 그리드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            icon={FileText}
-            title="총 지원서"
-            value={isLoading ? '-' : stats?.totalSubmissions ?? 0}
-            changeLabel="건"
-          />
-          <StatCard
-            icon={CreditCard}
-            title="입금 대기"
-            value={isLoading ? '-' : stats?.submissionsByStatus.pending ?? 0}
-            changeLabel="건"
-            variant="warning"
-          />
-          <StatCard
-            icon={TrendingUp}
-            title="자동 매칭률"
-            value={isLoading ? '-' : `${stats?.autoMatchRate ?? 0}%`}
-            variant="success"
-          />
-          <StatCard
-            icon={CreditCard}
-            title="총 입금액"
-            value={isLoading ? '-' : formatCurrency(stats?.totalAmount ?? 0)}
-          />
+      <div className="p-4 sm:p-8 space-y-6">
+        {/* 퀵 링크 */}
+        <div className="grid grid-cols-3 gap-4">
+          <Link href="/payments/submissions" className="card p-4 sm:p-6 hover:shadow-md transition-shadow">
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+              <div className="p-2 sm:p-3 rounded-lg bg-primary-50 text-primary-600">
+                <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div className="text-center sm:text-left">
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">지원서 관리</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1 hidden sm:block">
+                  구글 폼 지원서 목록 및 상태 관리
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/payments/deposits" className="card p-4 sm:p-6 hover:shadow-md transition-shadow">
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+              <div className="p-2 sm:p-3 rounded-lg bg-blue-50 text-blue-600">
+                <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div className="text-center sm:text-left">
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">입금 기록</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1 hidden sm:block">
+                  전체 입금 내역 및 매칭 현황
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/payments/matching" className="card p-4 sm:p-6 hover:shadow-md transition-shadow">
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+              <div className="p-2 sm:p-3 rounded-lg bg-green-50 text-green-600">
+                <ArrowRightLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div className="text-center sm:text-left">
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">수동 매칭</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1 hidden sm:block">
+                  자동 매칭 실패 건 수동 처리
+                </p>
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* 상태별 현황 */}
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 지원서 상태 */}
           <div className="card p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -139,49 +156,36 @@ function PaymentsContent() {
           </div>
         </div>
 
-        {/* 퀵 링크 */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link href="/payments/submissions" className="card p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-primary-50 text-primary-600">
-                <FileText className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">지원서 관리</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  구글 폼 지원서 목록 및 상태 관리
-                </p>
-              </div>
-            </div>
-          </Link>
-
-          <Link href="/payments/deposits" className="card p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-blue-50 text-blue-600">
-                <CreditCard className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">입금 기록</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  전체 입금 내역 및 매칭 현황
-                </p>
-              </div>
-            </div>
-          </Link>
-
-          <Link href="/payments/matching" className="card p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-green-50 text-green-600">
-                <ArrowRightLeft className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">수동 매칭</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  자동 매칭 실패 건 수동 처리
-                </p>
-              </div>
-            </div>
-          </Link>
+        {/* 통계 카드 그리드 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+          <StatCard
+            icon={FileText}
+            title="총 지원서"
+            value={isLoading ? '-' : stats?.totalSubmissions ?? 0}
+            changeLabel="건"
+            compact
+          />
+          <StatCard
+            icon={CreditCard}
+            title="입금 대기"
+            value={isLoading ? '-' : stats?.submissionsByStatus.pending ?? 0}
+            changeLabel="건"
+            variant="warning"
+            compact
+          />
+          <StatCard
+            icon={TrendingUp}
+            title="자동 매칭률"
+            value={isLoading ? '-' : `${stats?.autoMatchRate ?? 0}%`}
+            variant="success"
+            compact
+          />
+          <StatCard
+            icon={CreditCard}
+            title="총 입금액"
+            value={isLoading ? '-' : formatCurrency(stats?.totalAmount ?? 0)}
+            compact
+          />
         </div>
       </div>
     </div>
