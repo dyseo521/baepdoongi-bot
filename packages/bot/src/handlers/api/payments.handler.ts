@@ -7,6 +7,7 @@
  * GET /api/payments/stats - 결제 통계
  * POST /api/payments/match - 수동 매칭
  * POST /api/payments/invite - 초대 이메일 발송
+ * PUT /api/payments/submissions/:id/join - 수동 가입 확인
  */
 
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
@@ -21,6 +22,7 @@ import {
   getSubmission,
   getDeposit,
   saveLog,
+  updateSubmissionStatus,
 } from '../../services/db.service.js';
 import {
   manualMatch,
@@ -71,6 +73,12 @@ export async function handlePayments(
   // POST /api/payments/unmatch
   if (subPath === '/unmatch' && method === 'POST') {
     return handleUnmatch(event);
+  }
+
+  // PUT /api/payments/submissions/:submissionId/join - 수동 가입 확인
+  const submissionJoinMatch = subPath.match(/^\/submissions\/([^/]+)\/join$/);
+  if (submissionJoinMatch && method === 'PUT') {
+    return handleManualJoin(submissionJoinMatch[1] ?? '');
   }
 
   // DELETE /api/payments/submissions/:submissionId
@@ -271,5 +279,53 @@ async function handleDeleteDeposit(
   } catch (error) {
     console.error('[Payments API] Delete Deposit Error:', error);
     return createErrorResponse(500, '입금 삭제에 실패했습니다');
+  }
+}
+
+/**
+ * 수동 가입 확인 - invited 상태의 지원서를 joined로 변경
+ */
+async function handleManualJoin(
+  submissionId: string
+): Promise<APIGatewayProxyResult> {
+  try {
+    // 지원서 조회
+    const submission = await getSubmission(submissionId);
+    if (!submission) {
+      return createErrorResponse(404, '지원서를 찾을 수 없습니다');
+    }
+
+    // invited 상태만 가입 확인 가능
+    if (submission.status !== 'invited') {
+      return createErrorResponse(
+        400,
+        `invited 상태의 지원서만 가입 확인할 수 있습니다 (현재: ${submission.status})`
+      );
+    }
+
+    // joined로 상태 변경
+    const now = new Date().toISOString();
+    await updateSubmissionStatus(submissionId, 'joined', {
+      joinedAt: now,
+    });
+
+    // 활동 로그 기록
+    await saveLog({
+      logId: `log_${randomUUID()}`,
+      type: 'SUBMISSION_JOINED',
+      userId: 'dashboard',
+      details: {
+        submissionId,
+        name: submission.name,
+        email: submission.email,
+        matchMethod: 'manual',
+      },
+    });
+
+    console.log(`[Payments API] Manual join confirmed: ${submissionId} (${submission.name})`);
+    return createResponse(200, { success: true });
+  } catch (error) {
+    console.error('[Payments API] Manual Join Error:', error);
+    return createErrorResponse(500, '가입 확인 처리에 실패했습니다');
   }
 }
