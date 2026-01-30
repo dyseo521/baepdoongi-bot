@@ -5,9 +5,19 @@
  */
 
 import type { AllMiddlewareArgs, SlackEventMiddlewareArgs } from '@slack/bolt';
-import { saveMember, saveLog } from '../../services/db.service.js';
+import {
+  saveMember,
+  saveLog,
+  listSubmissionsByStatus,
+  updateSubmissionStatus,
+} from '../../services/db.service.js';
 import { sendDirectMessage } from '../../services/slack.service.js';
-import { validateDisplayName } from '../../utils/name-validator.js';
+import {
+  validateDisplayName,
+  extractName,
+  extractStudentId,
+  extractYearFromStudentId,
+} from '../../utils/name-validator.js';
 import { generateId } from '../../utils/id.js';
 
 // 온보딩 메시지 템플릿
@@ -76,7 +86,92 @@ export async function handleTeamJoin({
     });
 
     console.log(`온보딩 DM 발송 완료: ${user.id}`);
+
+    // 이메일 또는 이름+학번으로 초대 발송된 지원서 찾아서 가입 완료 처리
+    const email = user.profile?.email;
+    await markSubmissionAsJoined(email, user.id, displayName);
   } catch (error) {
     console.error('team_join 처리 실패:', error);
+  }
+}
+
+/**
+ * 이메일 또는 이름+학번으로 초대 발송된 지원서를 찾아서 가입 완료 상태로 변경합니다.
+ *
+ * 매칭 우선순위:
+ * 1. 이메일 일치
+ * 2. 이름 + 학번 연도 일치 (학번 형식: 지원서 8자리 → 슬랙 2자리)
+ */
+async function markSubmissionAsJoined(
+  email: string | undefined,
+  slackId: string,
+  displayName: string
+): Promise<void> {
+  try {
+    // invited 상태의 지원서 목록 조회
+    const invitedSubmissions = await listSubmissionsByStatus('invited');
+
+    if (invitedSubmissions.length === 0) {
+      console.log('가입 완료 처리할 invited 상태 지원서가 없습니다.');
+      return;
+    }
+
+    let matchingSubmission = null;
+    let matchMethod = '';
+
+    // 1차: 이메일 매칭
+    if (email) {
+      matchingSubmission = invitedSubmissions.find(
+        (sub) => sub.email?.toLowerCase() === email.toLowerCase()
+      );
+      if (matchingSubmission) {
+        matchMethod = 'email';
+      }
+    }
+
+    // 2차: 이름 + 학번 매칭 (이메일 매칭 실패 시)
+    if (!matchingSubmission && displayName) {
+      const slackName = extractName(displayName);
+      const slackYear = extractStudentId(displayName); // 슬랙 표시 이름의 학번 (2자리)
+
+      if (slackName && slackYear) {
+        matchingSubmission = invitedSubmissions.find((sub) => {
+          const subYear = extractYearFromStudentId(sub.studentId); // 지원서 학번에서 연도 추출
+          return sub.name === slackName && subYear === slackYear;
+        });
+        if (matchingSubmission) {
+          matchMethod = 'name_studentId';
+        }
+      }
+    }
+
+    if (!matchingSubmission) {
+      console.log(`가입 완료 처리할 지원서 없음 - email: ${email || 'N/A'}, displayName: ${displayName || 'N/A'}`);
+      return;
+    }
+
+    // 지원서 상태를 joined로 업데이트
+    const now = new Date().toISOString();
+    await updateSubmissionStatus(matchingSubmission.submissionId, 'joined', {
+      joinedAt: now,
+      slackId,
+    });
+
+    // 활동 로그 기록
+    await saveLog({
+      logId: generateId('log'),
+      type: 'SUBMISSION_JOINED',
+      userId: slackId,
+      details: {
+        submissionId: matchingSubmission.submissionId,
+        name: matchingSubmission.name,
+        email: matchingSubmission.email,
+        matchMethod,
+      },
+    });
+
+    console.log(`지원서 가입 완료 처리: ${matchingSubmission.name} (매칭 방법: ${matchMethod})`);
+  } catch (error) {
+    console.error('가입 완료 처리 실패:', error);
   }
 }
