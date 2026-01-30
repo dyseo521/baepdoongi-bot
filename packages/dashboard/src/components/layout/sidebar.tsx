@@ -55,10 +55,14 @@ export function Sidebar() {
   const { isOpen, close } = useMobileMenu();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
-    // Auto-expand menu if current path is in its children
+    // Auto-expand menu if current path is parent or in its children
     const expanded: string[] = [];
     navigation.forEach((item) => {
-      if (item.children?.some((child) => pathname.startsWith(child.href))) {
+      if (
+        item.children &&
+        (pathname === item.href ||
+          item.children.some((child) => pathname.startsWith(child.href)))
+      ) {
         expanded.push(item.name);
       }
     });
@@ -161,7 +165,11 @@ export function Sidebar() {
                   {hasChildren ? (
                     <>
                       <button
-                        onClick={() => toggleMenu(item.name)}
+                        onClick={() => {
+                          toggleMenu(item.name);
+                          router.push(item.href);
+                          close();
+                        }}
                         aria-expanded={isExpanded}
                         aria-controls={`submenu-${item.name}`}
                         className={clsx(
