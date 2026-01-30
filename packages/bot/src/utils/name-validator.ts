@@ -94,7 +94,7 @@ export function extractName(displayName: string): string | null {
   if (!validateDisplayName(displayName)) {
     return null;
   }
-  return displayName.split('/')[0] || null;
+  return displayName.split('/')[0]?.trim() || null;
 }
 
 /**
@@ -104,7 +104,7 @@ export function extractDepartment(displayName: string): string | null {
   if (!validateDisplayName(displayName)) {
     return null;
   }
-  return displayName.split('/')[1] || null;
+  return displayName.split('/')[1]?.trim() || null;
 }
 
 /**
@@ -114,5 +114,16 @@ export function extractStudentId(displayName: string): string | null {
   if (!validateDisplayName(displayName)) {
     return null;
   }
-  return displayName.split('/')[2] || null;
+  return displayName.split('/')[2]?.trim() || null;
+}
+
+/**
+ * 지원서 학번(8자리)에서 학번 연도(2자리)를 추출합니다.
+ * 예: "12231213" → "23" (3,4번째 자리)
+ */
+export function extractYearFromStudentId(studentId: string): string | null {
+  if (!studentId || studentId.length < 4) {
+    return null;
+  }
+  return studentId.substring(2, 4);
 }
