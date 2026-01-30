@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard, RotateCw, Unlink } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard, RotateCw, Unlink, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, Modal, SubmissionsPageSkeleton, MobileDataCard } from '@/components/ui';
-import { fetchSubmissions, fetchDeposits, sendInviteEmail, unmatchSubmission } from '@/lib/api';
+import { fetchSubmissions, fetchDeposits, sendInviteEmail, unmatchSubmission, markSubmissionJoined } from '@/lib/api';
 import type { Submission, Deposit, SubmissionStatus } from '@baepdoongi/shared';
 
 const statusConfig: Record<SubmissionStatus, { label: string; variant: 'success' | 'warning' | 'info' | 'default' }> = {
@@ -30,6 +30,7 @@ function SubmissionsContent() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [unmatchConfirmSubmission, setUnmatchConfirmSubmission] = useState<Submission | null>(null);
+  const [joinConfirmSubmission, setJoinConfirmSubmission] = useState<Submission | null>(null);
 
   const { data: submissions = [], isLoading: isLoadingSubmissions, isError, error } = useQuery<Submission[]>({
     queryKey: ['submissions'],
@@ -86,6 +87,19 @@ function SubmissionsContent() {
     onError: (error) => {
       console.error('매칭 해제 실패:', error);
       alert('매칭 해제에 실패했습니다.');
+    },
+  });
+
+  const markJoinedMutation = useMutation({
+    mutationFn: (submissionId: string) => markSubmissionJoined(submissionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+      setSelectedSubmission(null);
+      setJoinConfirmSubmission(null);
+    },
+    onError: (error) => {
+      console.error('가입 확인 실패:', error);
+      alert('가입 확인 처리에 실패했습니다.');
     },
   });
 
@@ -223,8 +237,31 @@ function SubmissionsContent() {
             </Button>
           );
         }
-        // 재전송: invited 상태 또는 이미 발송됨
-        if (sub.status === 'invited' || sub.emailSent) {
+        // invited 상태: 가입 확인 + 재전송 버튼
+        if (sub.status === 'invited') {
+          return (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                leftIcon={<UserCheck className="w-3 h-3" />}
+                onClick={() => setJoinConfirmSubmission(sub)}
+              >
+                가입 확인
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                leftIcon={<RotateCw className="w-3 h-3" />}
+                onClick={() => sendEmailMutation.mutate(sub.submissionId)}
+                isLoading={sendEmailMutation.isPending}
+              >
+                재전송
+              </Button>
+            </div>
+          );
+        }
+        // 그 외 이미 발송된 상태 (matched + emailSent)
+        if (sub.emailSent) {
           return (
             <Button
               size="sm"
@@ -298,8 +335,36 @@ function SubmissionsContent() {
             >
               초대 메일 발송
             </Button>
-          ) : // 재전송
-          sub.status === 'invited' || sub.emailSent ? (
+          ) : // invited 상태: 가입 확인 + 재전송
+          sub.status === 'invited' ? (
+            <div className="flex gap-3 w-full">
+              <Button
+                size="sm"
+                leftIcon={<UserCheck className="w-4 h-4" />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setJoinConfirmSubmission(sub);
+                }}
+                className="flex-1"
+              >
+                가입 확인
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                leftIcon={<RotateCw className="w-4 h-4" />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sendEmailMutation.mutate(sub.submissionId);
+                }}
+                isLoading={sendEmailMutation.isPending}
+                className="flex-1"
+              >
+                재전송
+              </Button>
+            </div>
+          ) : // 그 외 이미 발송된 상태
+          sub.emailSent ? (
             <Button
               size="sm"
               variant="secondary"
@@ -398,7 +463,7 @@ function SubmissionsContent() {
               )}
             </div>
             {/* 오른쪽: 액션 버튼들 */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {/* 매칭 해제 - matched 상태에서만 표시 */}
               {selectedSubmission?.status === 'matched' && (
                 <Button
@@ -418,6 +483,15 @@ function SubmissionsContent() {
                   isLoading={sendEmailMutation.isPending}
                 >
                   초대 발송
+                </Button>
+              )}
+              {/* 수동 가입 확인 - invited 상태에서만 표시 */}
+              {selectedSubmission?.status === 'invited' && (
+                <Button
+                  leftIcon={<UserCheck className="w-4 h-4" />}
+                  onClick={() => setJoinConfirmSubmission(selectedSubmission)}
+                >
+                  가입 확인
                 </Button>
               )}
               {/* 재전송 */}
@@ -555,6 +629,54 @@ function SubmissionsContent() {
               <li className="flex items-start gap-2">
                 <span className="text-gray-400">•</span>
                 <span>다른 지원서와 재매칭 가능합니다</span>
+              </li>
+            </ul>
+          </div>
+        )}
+      </Modal>
+
+      {/* 가입 확인 모달 */}
+      <Modal
+        isOpen={!!joinConfirmSubmission}
+        onClose={() => setJoinConfirmSubmission(null)}
+        title="가입 확인"
+        titleIcon={<UserCheck className="w-5 h-5 text-primary-600" />}
+        footer={
+          <div className="flex gap-3 w-full">
+            <Button
+              variant="ghost"
+              className="flex-1"
+              onClick={() => setJoinConfirmSubmission(null)}
+            >
+              취소
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                if (joinConfirmSubmission) {
+                  markJoinedMutation.mutate(joinConfirmSubmission.submissionId);
+                }
+              }}
+              isLoading={markJoinedMutation.isPending}
+            >
+              확인
+            </Button>
+          </div>
+        }
+      >
+        {joinConfirmSubmission && (
+          <div className="p-4 sm:p-6">
+            <p className="text-gray-700 mb-4">
+              <span className="font-medium">{joinConfirmSubmission.name}</span>님의 가입을 확인하시겠습니까?
+            </p>
+            <ul className="text-sm text-gray-600 space-y-1.5">
+              <li className="flex items-start gap-2">
+                <span className="text-gray-400">•</span>
+                <span>지원서 상태가 &quot;가입 완료&quot;로 변경됩니다</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-gray-400">•</span>
+                <span>슬랙 워크스페이스 가입을 수동으로 확인할 때 사용하세요</span>
               </li>
             </ul>
           </div>

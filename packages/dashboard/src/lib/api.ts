@@ -329,6 +329,19 @@ export async function unmatchSubmission(submissionId: string): Promise<void> {
   });
 }
 
+// Manual Join (수동 가입 확인)
+export async function markSubmissionJoined(submissionId: string): Promise<void> {
+  if (IS_MOCK) {
+    const mock = await import('./mock-data');
+    await mock.mockDelay(300);
+    console.log(`[Mock] Submission ${submissionId} marked as joined`);
+    return;
+  }
+  await fetchAPI(`/payments/submissions/${submissionId}/join`, {
+    method: 'PUT',
+  });
+}
+
 // Slack Channels
 export async function fetchSlackChannels(): Promise<SlackChannel[]> {
   if (IS_MOCK) {
