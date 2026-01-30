@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye } from 'lucide-react';
+import { Eye, ClipboardList, BookOpen, PartyPopper, Wallet, Wrench, Lightbulb } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, Modal, SuggestionsPageSkeleton, StatusDropdown, statusConfig, MobileDataCard } from '@/components/ui';
 import { fetchSuggestions, updateSuggestionStatus } from '@/lib/api';
@@ -17,13 +17,13 @@ const categoryLabels: Record<string, string> = {
   other: '기타',
 };
 
-const categoryEmojis: Record<string, string> = {
-  general: '📋',
-  study: '📚',
-  event: '🎉',
-  budget: '💰',
-  facility: '🔧',
-  other: '💡',
+const categoryIcons: Record<string, typeof ClipboardList> = {
+  general: ClipboardList,
+  study: BookOpen,
+  event: PartyPopper,
+  budget: Wallet,
+  facility: Wrench,
+  other: Lightbulb,
 };
 
 export default function SuggestionsPage() {
@@ -83,11 +83,15 @@ function SuggestionsContent() {
     {
       key: 'category',
       header: '분류',
-      render: (suggestion: Suggestion) => (
-        <span className="text-sm">
-          {categoryEmojis[suggestion.category]} {categoryLabels[suggestion.category] || suggestion.category}
-        </span>
-      ),
+      render: (suggestion: Suggestion) => {
+        const CategoryIcon = categoryIcons[suggestion.category] || ClipboardList;
+        return (
+          <span className="text-sm inline-flex items-center gap-1">
+            <CategoryIcon className="w-4 h-4 text-gray-400" />
+            {categoryLabels[suggestion.category] || suggestion.category}
+          </span>
+        );
+      },
     },
     {
       key: 'title',
@@ -145,9 +149,15 @@ function SuggestionsContent() {
       <MobileDataCard
         title={suggestion.title}
         subtitle={
-          <span className="text-gray-500">
-            {categoryEmojis[suggestion.category]} {categoryLabels[suggestion.category]}
-          </span>
+          (() => {
+            const CategoryIcon = categoryIcons[suggestion.category] || ClipboardList;
+            return (
+              <span className="text-gray-500 inline-flex items-center gap-1">
+                <CategoryIcon className="w-4 h-4 text-gray-400" />
+                {categoryLabels[suggestion.category]}
+              </span>
+            );
+          })()
         }
         badge={
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${config.bg} ${config.text}`}>
@@ -233,9 +243,15 @@ function SuggestionsContent() {
         {selectedSuggestion && (
           <div className="p-4 sm:p-6">
             <div className="mb-4">
-              <span className="text-sm text-gray-500">
-                {categoryEmojis[selectedSuggestion.category]} {categoryLabels[selectedSuggestion.category]}
-              </span>
+              {(() => {
+                const CategoryIcon = categoryIcons[selectedSuggestion.category] || ClipboardList;
+                return (
+                  <span className="text-sm text-gray-500 inline-flex items-center gap-1">
+                    <CategoryIcon className="w-4 h-4 text-gray-400" />
+                    {categoryLabels[selectedSuggestion.category]}
+                  </span>
+                );
+              })()}
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 mb-4">
