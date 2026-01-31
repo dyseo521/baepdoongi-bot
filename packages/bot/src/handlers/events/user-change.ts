@@ -5,9 +5,20 @@
  */
 
 import type { AllMiddlewareArgs, SlackEventMiddlewareArgs } from '@slack/bolt';
-import { getMember, saveMember, saveLog } from '../../services/db.service.js';
+import {
+  getMember,
+  saveMember,
+  saveLog,
+  listSubmissionsByStatus,
+  updateSubmissionStatus,
+} from '../../services/db.service.js';
 import { sendDirectMessage } from '../../services/slack.service.js';
-import { validateDisplayName } from '../../utils/name-validator.js';
+import {
+  validateDisplayName,
+  extractName,
+  extractStudentId,
+  extractYearFromStudentId,
+} from '../../utils/name-validator.js';
 import { generateId } from '../../utils/id.js';
 
 // 이름 형식 수정 안내 메시지
@@ -92,6 +103,9 @@ export async function handleUserChange({
         details: { displayName },
       });
 
+      // 지원서 재매칭 시도 (team_join에서 매칭 실패했던 경우)
+      await tryMatchSubmissionOnNameChange(user.id, displayName);
+
       console.log(`이름 형식 수정 완료: ${user.id} (${displayName})`);
       return;
     }
@@ -119,5 +133,65 @@ export async function handleUserChange({
     }
   } catch (error) {
     console.error('user_change 처리 실패:', error);
+  }
+}
+
+/**
+ * 프로필 이름 변경 시 지원서 재매칭을 시도합니다.
+ *
+ * team_join 시점에 이름 형식이 올바르지 않아 매칭되지 못한 지원서를
+ * 프로필 수정 후 다시 매칭합니다.
+ */
+async function tryMatchSubmissionOnNameChange(
+  slackId: string,
+  displayName: string
+): Promise<void> {
+  try {
+    // 이름, 학번 추출
+    const slackName = extractName(displayName);
+    const slackYear = extractStudentId(displayName);
+
+    if (!slackName || !slackYear) {
+      return;
+    }
+
+    // invited 상태 지원서 목록 조회
+    const invitedSubmissions = await listSubmissionsByStatus('invited');
+
+    if (invitedSubmissions.length === 0) {
+      return;
+    }
+
+    // 이름 + 학번 연도로 매칭 시도
+    const matchingSubmission = invitedSubmissions.find((sub) => {
+      const subYear = extractYearFromStudentId(sub.studentId);
+      return sub.name === slackName && subYear === slackYear;
+    });
+
+    if (!matchingSubmission) {
+      return;
+    }
+
+    // 지원서 상태를 joined로 업데이트
+    await updateSubmissionStatus(matchingSubmission.submissionId, 'joined', {
+      joinedAt: new Date().toISOString(),
+      slackId,
+    });
+
+    // 활동 로그 기록
+    await saveLog({
+      logId: generateId('log'),
+      type: 'SUBMISSION_JOINED',
+      userId: slackId,
+      details: {
+        submissionId: matchingSubmission.submissionId,
+        name: matchingSubmission.name,
+        matchMethod: 'name_studentId_on_profile_change',
+      },
+    });
+
+    console.log(`프로필 변경으로 지원서 가입 완료: ${matchingSubmission.name}`);
+  } catch (error) {
+    console.error('프로필 변경 시 지원서 매칭 실패:', error);
   }
 }
