@@ -251,43 +251,20 @@ function SubmissionsContent() {
             </Button>
           );
         }
-        // invited 상태: 가입 확인 + 재전송 버튼
+        // invited 상태: 가입 확인 (초록색)
         if (sub.status === 'invited') {
-          return (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                leftIcon={<UserCheck className="w-3 h-3" />}
-                onClick={() => setJoinConfirmSubmission(sub)}
-              >
-                가입 확인
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                leftIcon={<RotateCw className="w-3 h-3" />}
-                onClick={() => sendEmailMutation.mutate(sub.submissionId)}
-                isLoading={sendEmailMutation.isPending}
-              >
-                재전송
-              </Button>
-            </div>
-          );
-        }
-        // 그 외 이미 발송된 상태 (matched + emailSent)
-        if (sub.emailSent) {
           return (
             <Button
               size="sm"
-              variant="secondary"
-              leftIcon={<RotateCw className="w-3 h-3" />}
-              onClick={() => sendEmailMutation.mutate(sub.submissionId)}
-              isLoading={sendEmailMutation.isPending}
+              leftIcon={<UserCheck className="w-3 h-3" />}
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => setJoinConfirmSubmission(sub)}
             >
-              재전송
+              가입 확인
             </Button>
           );
         }
+        // 그 외 (matched+발송됨, joined): 버튼 없음 - 상세 모달에서 재전송 가능
         return null;
       },
     },
@@ -335,7 +312,7 @@ function SubmissionsContent() {
         ]}
         onClick={() => setSelectedSubmission(sub)}
         actions={
-          // 최초 발송
+          // 최초 발송 (파란색)
           sub.status === 'matched' && !sub.emailSent ? (
             <Button
               size="sm"
@@ -349,50 +326,21 @@ function SubmissionsContent() {
             >
               초대 메일 발송
             </Button>
-          ) : // invited 상태: 가입 확인 + 재전송
+          ) : // invited 상태: 가입 확인 (초록색)
           sub.status === 'invited' ? (
-            <div className="flex gap-3 w-full">
-              <Button
-                size="sm"
-                leftIcon={<UserCheck className="w-4 h-4" />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setJoinConfirmSubmission(sub);
-                }}
-                className="flex-1"
-              >
-                가입 확인
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                leftIcon={<RotateCw className="w-4 h-4" />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  sendEmailMutation.mutate(sub.submissionId);
-                }}
-                isLoading={sendEmailMutation.isPending}
-                className="flex-1"
-              >
-                재전송
-              </Button>
-            </div>
-          ) : // 그 외 이미 발송된 상태
-          sub.emailSent ? (
             <Button
               size="sm"
-              variant="secondary"
-              leftIcon={<RotateCw className="w-4 h-4" />}
+              leftIcon={<UserCheck className="w-4 h-4" />}
               onClick={(e) => {
                 e.stopPropagation();
-                sendEmailMutation.mutate(sub.submissionId);
+                setJoinConfirmSubmission(sub);
               }}
-              isLoading={sendEmailMutation.isPending}
-              className="w-full"
+              className="w-full bg-green-600 hover:bg-green-700"
             >
-              재전송
+              가입 확인
             </Button>
-          ) : undefined
+          ) : // 그 외 (matched+발송됨, joined): 버튼 없음
+          undefined
         }
       />
     );
@@ -510,10 +458,11 @@ function SubmissionsContent() {
                   초대 발송
                 </Button>
               )}
-              {/* 수동 가입 확인 - invited 상태에서만 표시 */}
+              {/* 수동 가입 확인 - invited 상태에서만 표시 (초록색) */}
               {selectedSubmission?.status === 'invited' && (
                 <Button
                   leftIcon={<UserCheck className="w-4 h-4" />}
+                  className="bg-green-600 hover:bg-green-700"
                   onClick={() => setJoinConfirmSubmission(selectedSubmission)}
                 >
                   가입 확인

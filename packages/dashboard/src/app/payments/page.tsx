@@ -6,7 +6,6 @@ import {
   CreditCard,
   FileText,
   ArrowRightLeft,
-  TrendingUp,
   Clock,
   CheckCircle,
   Mail,
@@ -150,25 +149,12 @@ function PaymentsContent() {
         </div>
 
         {/* 통계 카드 그리드 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6">
           <StatCard
             icon={FileText}
             title="총 지원서"
             value={isLoading ? '-' : stats?.totalSubmissions ?? 0}
             changeLabel="건"
-            compact
-          />
-          <StatCard
-            icon={Clock}
-            title="입금 대기"
-            value={isLoading ? '-' : stats?.submissionsByStatus.pending ?? 0}
-            changeLabel="건"
-            compact
-          />
-          <StatCard
-            icon={TrendingUp}
-            title="자동 매칭률"
-            value={isLoading ? '-' : `${stats?.autoMatchRate ?? 0}%`}
             compact
           />
           <StatCard
