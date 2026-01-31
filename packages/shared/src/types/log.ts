@@ -76,8 +76,8 @@ export type LogType =
   | 'INVITE_EMAIL_SENT' // 초대 이메일 발송
   | 'INVITE_EMAIL_FAILED' // 이메일 발송 실패
   | 'SUBMISSION_JOINED' // Slack 가입 완료
-  // 시스템 관련
-  | 'SYSTEM_START' // 봇 시작
+  // 시스템/설정 관련
+  | 'SETTINGS_UPDATE' // 설정 변경
   | 'SYSTEM_ERROR' // 시스템 오류
   | 'API_ERROR'; // API 오류
 
@@ -131,8 +131,8 @@ export const LOG_TYPE_LABELS: Record<LogType, string> = {
   INVITE_EMAIL_SENT: '초대 이메일 발송',
   INVITE_EMAIL_FAILED: '이메일 발송 실패',
   SUBMISSION_JOINED: 'Slack 가입 완료',
-  // 시스템 관련
-  SYSTEM_START: '봇 시작',
+  // 시스템/설정 관련
+  SETTINGS_UPDATE: '설정 변경',
   SYSTEM_ERROR: '시스템 오류',
   API_ERROR: 'API 오류',
 };

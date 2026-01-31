@@ -9,3 +9,4 @@ export * from './types/suggestion.js';
 export * from './types/api.js';
 export * from './types/payment.js';
 export * from './types/dm-template.js';
+export * from './types/settings.js';
