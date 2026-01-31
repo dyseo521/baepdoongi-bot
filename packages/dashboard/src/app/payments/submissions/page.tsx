@@ -355,7 +355,7 @@ function SubmissionsContent() {
         actions={
           <div className="flex items-center gap-2">
             <Button
-              variant={settings?.autoSendInviteEmail ? 'success' : 'secondary'}
+              variant={settings?.autoSendInviteEmail ? 'primary' : 'secondary'}
               size="sm"
               leftIcon={settings?.autoSendInviteEmail ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
               onClick={() => setShowAutoSendModal(true)}
