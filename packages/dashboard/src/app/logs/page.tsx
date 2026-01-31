@@ -54,7 +54,7 @@ const LOG_TYPE_LABELS: Record<string, string> = {
   RAG_QUERY: 'RAG 질문',
   RAG_RESPONSE: 'RAG 응답',
   RAG_ERROR: 'RAG 오류',
-  SYSTEM_START: '봇 시작',
+  SETTINGS_UPDATE: '설정 변경',
   SYSTEM_ERROR: '시스템 오류',
   API_ERROR: 'API 오류',
   // 결제/가입 관련
@@ -103,7 +103,7 @@ const LOG_TYPE_CONFIG: Record<string, { icon: typeof Activity; color: string; bg
   RAG_QUERY: { icon: MessageSquare, color: 'text-purple-600', bgColor: 'bg-purple-100' },
   RAG_RESPONSE: { icon: CheckCircle, color: 'text-purple-600', bgColor: 'bg-purple-100' },
   RAG_ERROR: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100' },
-  SYSTEM_START: { icon: Settings, color: 'text-green-600', bgColor: 'bg-green-100' },
+  SETTINGS_UPDATE: { icon: Settings, color: 'text-blue-600', bgColor: 'bg-blue-100' },
   SYSTEM_ERROR: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100' },
   API_ERROR: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100' },
   // 결제 관련
@@ -132,7 +132,7 @@ const LOG_CATEGORIES = [
   { value: 'suggestion', label: '건의사항', types: ['SUGGESTION_SUBMIT', 'SUGGESTION_READ', 'SUGGESTION_REPLY'] },
   { value: 'rag', label: 'RAG', types: ['RAG_QUERY', 'RAG_RESPONSE', 'RAG_ERROR'] },
   { value: 'payment', label: '결제', types: ['SUBMISSION_RECEIVE', 'DEPOSIT_RECEIVE', 'PAYMENT_MATCH_AUTO', 'PAYMENT_MATCH_MANUAL', 'PAYMENT_MATCH_FAILED', 'PAYMENT_UNMATCH', 'SUBMISSION_DELETE', 'DEPOSIT_DELETE', 'INVITE_EMAIL_SENT', 'INVITE_EMAIL_FAILED'] },
-  { value: 'system', label: '시스템', types: ['SYSTEM_START', 'SYSTEM_ERROR', 'API_ERROR'] },
+  { value: 'system', label: '시스템', types: ['SETTINGS_UPDATE', 'SYSTEM_ERROR', 'API_ERROR'] },
 ];
 
 function formatRelativeTime(dateStr: string): string {
@@ -191,6 +191,16 @@ function formatLogDetails(log: ActivityLog): string {
 
     case 'EVENT_RSVP':
       return details['response'] ? `응답: ${details['response']}` : '';
+
+    case 'SETTINGS_UPDATE': {
+      const changes = details['changes'] as Record<string, { from: unknown; to: unknown }> | undefined;
+      if (changes) {
+        return Object.entries(changes)
+          .map(([key, { from, to }]) => `${key}: ${String(from)} → ${String(to)}`)
+          .join(', ');
+      }
+      return '';
+    }
 
     default:
       if (Object.keys(details).length > 0) {

@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard, RotateCw, Unlink, UserCheck } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard, RotateCw, Unlink, UserCheck, Bell, BellOff } from 'lucide-react';
 import Link from 'next/link';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, Modal, SubmissionsPageSkeleton, MobileDataCard } from '@/components/ui';
-import { fetchSubmissions, fetchDeposits, sendInviteEmail, unmatchSubmission, markSubmissionJoined } from '@/lib/api';
-import type { Submission, Deposit, SubmissionStatus } from '@baepdoongi/shared';
+import { fetchSubmissions, fetchDeposits, sendInviteEmail, unmatchSubmission, markSubmissionJoined, fetchSettings, updateSettings } from '@/lib/api';
+import type { Submission, Deposit, SubmissionStatus, Settings } from '@baepdoongi/shared';
 
 const statusConfig: Record<SubmissionStatus, { label: string; variant: 'success' | 'warning' | 'info' | 'default' }> = {
   pending: { label: '입금 대기', variant: 'warning' },
@@ -31,6 +31,7 @@ function SubmissionsContent() {
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [unmatchConfirmSubmission, setUnmatchConfirmSubmission] = useState<Submission | null>(null);
   const [joinConfirmSubmission, setJoinConfirmSubmission] = useState<Submission | null>(null);
+  const [showAutoSendModal, setShowAutoSendModal] = useState(false);
 
   const { data: submissions = [], isLoading: isLoadingSubmissions, isError, error } = useQuery<Submission[]>({
     queryKey: ['submissions'],
@@ -42,6 +43,19 @@ function SubmissionsContent() {
     queryKey: ['deposits'],
     queryFn: fetchDeposits,
     retry: 1,
+  });
+
+  const { data: settings } = useQuery<Settings>({
+    queryKey: ['settings'],
+    queryFn: fetchSettings,
+  });
+
+  const settingsMutation = useMutation({
+    mutationFn: updateSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      setShowAutoSendModal(false);
+    },
   });
 
   // depositId -> Deposit 맵핑 (입금 금액 조회용)
@@ -390,11 +404,22 @@ function SubmissionsContent() {
         title="지원서 관리"
         description="구글 폼 지원서 목록 및 상태 관리"
         actions={
-          <Link href="/payments">
-            <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
-              돌아가기
+          <div className="flex items-center gap-2">
+            <Button
+              variant={settings?.autoSendInviteEmail ? 'primary' : 'secondary'}
+              size="sm"
+              leftIcon={settings?.autoSendInviteEmail ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+              onClick={() => setShowAutoSendModal(true)}
+              className={settings?.autoSendInviteEmail ? 'bg-green-600 hover:bg-green-700' : ''}
+            >
+              자동 발송 {settings?.autoSendInviteEmail ? 'ON' : 'OFF'}
             </Button>
-          </Link>
+            <Link href="/payments">
+              <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+                돌아가기
+              </Button>
+            </Link>
+          </div>
         }
       />
 
@@ -681,6 +706,54 @@ function SubmissionsContent() {
             </ul>
           </div>
         )}
+      </Modal>
+
+      {/* 자동 발송 설정 모달 */}
+      <Modal
+        isOpen={showAutoSendModal}
+        onClose={() => setShowAutoSendModal(false)}
+        title={settings?.autoSendInviteEmail ? '자동 발송 끄기' : '자동 발송 켜기'}
+        titleIcon={settings?.autoSendInviteEmail ? <BellOff className="w-5 h-5 text-gray-600" /> : <Bell className="w-5 h-5 text-green-600" />}
+        footer={
+          <div className="flex gap-3 w-full">
+            <Button
+              variant="ghost"
+              className="flex-1"
+              onClick={() => setShowAutoSendModal(false)}
+            >
+              취소
+            </Button>
+            <Button
+              className="flex-1"
+              variant={settings?.autoSendInviteEmail ? 'secondary' : 'primary'}
+              onClick={() => {
+                settingsMutation.mutate({
+                  autoSendInviteEmail: !settings?.autoSendInviteEmail,
+                });
+              }}
+              isLoading={settingsMutation.isPending}
+            >
+              {settings?.autoSendInviteEmail ? '끄기' : '켜기'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="p-4 sm:p-6">
+          {settings?.autoSendInviteEmail ? (
+            <>
+              <p className="text-gray-700 mb-4">
+                자동 매칭 성공 시 초대 이메일이 발송되지 않습니다.
+              </p>
+              <p className="text-sm text-gray-500">
+                수동으로 &quot;초대 발송&quot; 버튼을 눌러야 합니다.
+              </p>
+            </>
+          ) : (
+            <p className="text-gray-700">
+              자동 매칭 성공 시 Slack 초대 이메일이 자동으로 발송됩니다.
+            </p>
+          )}
+        </div>
       </Modal>
     </div>
   );
