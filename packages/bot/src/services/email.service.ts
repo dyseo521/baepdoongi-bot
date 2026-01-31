@@ -122,7 +122,7 @@ export interface InviteEmailOptions {
 export async function sendInviteEmail(options: InviteEmailOptions): Promise<boolean> {
   const { toEmail, name, inviteLink } = options;
 
-  const subject = '[IGRUS] Slack 워크스페이스 초대';
+  const subject = '[IGRUS] Slack 및 카카오톡 팀채팅 초대';
 
   const htmlBody = `
 <!DOCTYPE html>
@@ -193,7 +193,7 @@ export async function sendInviteEmail(options: InviteEmailOptions): Promise<bool
                 <tr>
                   <td style="padding: 20px 24px;">
                     <p style="margin: 0 0 12px; color: ${BRAND.primaryDark}; font-size: 14px; font-weight: 600;">
-                      참여 후 안내사항
+                      Slack 참여 후 안내사항
                     </p>
                     <ul style="margin: 0; padding: 0 0 0 20px; color: #555555; font-size: 14px; line-height: 1.8;">
                       <li style="margin-bottom: 6px;">프로필 → 이름을 <strong>"이름 / 학과 / 학번(2자리)"</strong> 형식으로 변경해주세요</li>
@@ -271,7 +271,7 @@ ${BRAND.kakaoInviteLink}
 ${inviteLink}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-참여 후 안내사항
+Slack 참여 후 안내사항
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 • 프로필 → 이름을 "이름 / 학과 / 학번(2자리)" 형식으로 변경해주세요
