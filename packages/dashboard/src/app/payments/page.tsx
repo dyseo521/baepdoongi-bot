@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   CreditCard,
@@ -11,11 +12,13 @@ import {
   CheckCircle,
   Mail,
   Users,
+  Settings,
+  X,
 } from 'lucide-react';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { StatCard, Button } from '@/components/ui';
-import { fetchPaymentStats } from '@/lib/api';
-import type { PaymentStats } from '@baepdoongi/shared';
+import { fetchPaymentStats, fetchSettings, updateSettings } from '@/lib/api';
+import type { PaymentStats, Settings as SettingsType } from '@baepdoongi/shared';
 
 export default function PaymentsPage() {
   return (
@@ -26,10 +29,31 @@ export default function PaymentsPage() {
 }
 
 function PaymentsContent() {
+  const [showSettings, setShowSettings] = useState(false);
+  const queryClient = useQueryClient();
+
   const { data: stats, isLoading } = useQuery<PaymentStats>({
     queryKey: ['paymentStats'],
     queryFn: fetchPaymentStats,
   });
+
+  const { data: settings } = useQuery<SettingsType>({
+    queryKey: ['settings'],
+    queryFn: fetchSettings,
+  });
+
+  const settingsMutation = useMutation({
+    mutationFn: updateSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+    },
+  });
+
+  const handleToggleAutoEmail = () => {
+    settingsMutation.mutate({
+      autoSendInviteEmail: !settings?.autoSendInviteEmail,
+    });
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -38,12 +62,89 @@ function PaymentsContent() {
     }).format(amount);
   };
 
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+  };
+
   return (
     <div>
       <PageHeader
         title="회비 관리"
         description="회비 납부 현황 및 지원서 매칭 관리"
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            <Settings className="w-4 h-4 mr-1.5" />
+            설정
+          </Button>
+        }
       />
+
+      {/* 설정 패널 */}
+      {showSettings && (
+        <div className="mx-4 sm:mx-8 mb-4">
+          <div className="card p-4 border-primary-100 bg-primary-50/30">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Settings className="w-4 h-4 text-primary-600" />
+                결제 관리 설정
+              </h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-t border-primary-100">
+              <div>
+                <div className="font-medium text-gray-900">자동 초대 이메일 발송</div>
+                <div className="text-sm text-gray-500">
+                  자동 매칭 성공 시 Slack 초대 이메일을 자동으로 발송합니다
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings?.autoSendInviteEmail ?? false}
+                onClick={handleToggleAutoEmail}
+                disabled={settingsMutation.isPending}
+                className={`
+                  relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
+                  border-2 border-transparent transition-colors duration-200 ease-in-out
+                  focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+                  ${settings?.autoSendInviteEmail ? 'bg-primary-600' : 'bg-gray-200'}
+                  ${settingsMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+              >
+                <span
+                  className={`
+                    pointer-events-none inline-block h-5 w-5 transform rounded-full
+                    bg-white shadow ring-0 transition duration-200 ease-in-out
+                    ${settings?.autoSendInviteEmail ? 'translate-x-5' : 'translate-x-0'}
+                  `}
+                />
+              </button>
+            </div>
+
+            {settings?.updatedAt && (
+              <div className="text-xs text-gray-400 mt-2">
+                마지막 변경: {formatDateTime(settings.updatedAt)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="p-4 sm:p-8 space-y-6">
         {/* 퀵 링크 */}

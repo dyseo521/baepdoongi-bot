@@ -20,6 +20,7 @@ import type {
   BulkDMRequest,
   BulkDMJob,
   BulkDMJobResponse,
+  Settings,
 } from '@baepdoongi/shared';
 
 const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || '/api';
@@ -431,4 +432,36 @@ export async function getEventDMHistory(eventId: string): Promise<BulkDMJob[]> {
   }
   const response = await fetchAPI<{ jobs: BulkDMJob[] }>(`/events/${eventId}/dm-history`);
   return response.jobs;
+}
+
+// Settings
+export async function fetchSettings(): Promise<Settings> {
+  if (IS_MOCK) {
+    const mock = await import('./mock-data');
+    await mock.mockDelay();
+    return {
+      autoSendInviteEmail: false,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'dashboard',
+    };
+  }
+  return fetchAPI<Settings>('/settings');
+}
+
+export async function updateSettings(settings: Partial<Settings>): Promise<Settings> {
+  if (IS_MOCK) {
+    const mock = await import('./mock-data');
+    await mock.mockDelay(300);
+    console.log('[Mock] Settings updated:', settings);
+    return {
+      ...settings,
+      autoSendInviteEmail: settings.autoSendInviteEmail ?? false,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'dashboard',
+    };
+  }
+  return fetchAPI<Settings>('/settings', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  });
 }
