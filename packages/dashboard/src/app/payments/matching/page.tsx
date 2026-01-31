@@ -22,7 +22,6 @@ function MatchingContent() {
   const queryClient = useQueryClient();
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
-  const [autoSendEmail, setAutoSendEmail] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'submission' | 'deposit'; item: Submission | Deposit } | null>(null);
 
   const { data: submissions = [], isLoading: isLoadingSubmissions } = useQuery<Submission[]>({
@@ -144,20 +143,12 @@ function MatchingContent() {
           </div>
         </div>
 
-        {/* 설정 및 매칭 버튼 */}
+        {/* 매칭 버튼 */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={autoSendEmail}
-              onChange={(e) => setAutoSendEmail(e.target.checked)}
-              className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-            />
-            <span className="text-xs sm:text-sm text-gray-700">
-              <Mail className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-              <span className="hidden sm:inline">매칭 시 </span>자동 초대 메일 발송
-            </span>
-          </label>
+          <span className="text-xs sm:text-sm text-gray-500">
+            <Mail className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+            자동 발송 설정은 지원서 관리 탭에서 변경
+          </span>
 
           <Button
             onClick={handleMatch}

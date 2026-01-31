@@ -278,6 +278,9 @@ export async function manualMatch(
     },
   });
 
+  // 자동 이메일 발송 시도 (Settings.autoSendInviteEmail 활성화 시)
+  await tryAutoSendInviteEmail(submissionId);
+
   return match;
 }
 
