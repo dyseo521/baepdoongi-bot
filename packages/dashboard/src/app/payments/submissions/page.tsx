@@ -256,8 +256,8 @@ function SubmissionsContent() {
           return (
             <Button
               size="sm"
+              variant="success"
               leftIcon={<UserCheck className="w-3 h-3" />}
-              className="bg-green-600 hover:bg-green-700"
               onClick={() => setJoinConfirmSubmission(sub)}
             >
               가입 확인
@@ -330,12 +330,13 @@ function SubmissionsContent() {
           sub.status === 'invited' ? (
             <Button
               size="sm"
+              variant="success"
               leftIcon={<UserCheck className="w-4 h-4" />}
               onClick={(e) => {
                 e.stopPropagation();
                 setJoinConfirmSubmission(sub);
               }}
-              className="w-full bg-green-600 hover:bg-green-700"
+              className="w-full"
             >
               가입 확인
             </Button>
@@ -354,11 +355,10 @@ function SubmissionsContent() {
         actions={
           <div className="flex items-center gap-2">
             <Button
-              variant={settings?.autoSendInviteEmail ? 'primary' : 'secondary'}
+              variant={settings?.autoSendInviteEmail ? 'success' : 'secondary'}
               size="sm"
               leftIcon={settings?.autoSendInviteEmail ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
               onClick={() => setShowAutoSendModal(true)}
-              className={settings?.autoSendInviteEmail ? 'bg-green-600 hover:bg-green-700' : ''}
             >
               자동 발송 {settings?.autoSendInviteEmail ? 'ON' : 'OFF'}
             </Button>
@@ -458,11 +458,11 @@ function SubmissionsContent() {
                   초대 발송
                 </Button>
               )}
-              {/* 수동 가입 확인 - invited 상태에서만 표시 (초록색) */}
+              {/* 수동 가입 확인 - invited 상태에서만 표시 */}
               {selectedSubmission?.status === 'invited' && (
                 <Button
+                  variant="success"
                   leftIcon={<UserCheck className="w-4 h-4" />}
-                  className="bg-green-600 hover:bg-green-700"
                   onClick={() => setJoinConfirmSubmission(selectedSubmission)}
                 >
                   가입 확인
