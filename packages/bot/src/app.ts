@@ -12,14 +12,12 @@ import type { App as AppType, LogLevel as LogLevelType } from '@slack/bolt';
 const { App, AwsLambdaReceiver, LogLevel } = pkg;
 import type { AwsCallback, AwsEvent } from '@slack/bolt/dist/receivers/AwsLambdaReceiver.js';
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { randomUUID } from 'crypto';
 import { getSecrets } from './services/secrets.service.js';
 import { registerEventHandlers } from './handlers/events/index.js';
 import { registerCommandHandlers } from './handlers/commands/index.js';
 import { registerActionHandlers } from './handlers/actions/index.js';
 import { handleApiRequest } from './handlers/api/index.js';
 import { handleWebhookRequest } from './handlers/webhooks/index.js';
-import { saveLog } from './services/db.service.js';
 
 // 환경 변수 검증
 const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
@@ -66,20 +64,6 @@ async function initializeApp(): Promise<AppType> {
   registerEventHandlers(app);
   registerCommandHandlers(app);
   registerActionHandlers(app);
-
-  // 시스템 시작 로그 (콜드 스타트 시에만)
-  try {
-    await saveLog({
-      logId: `log_${randomUUID()}`,
-      type: 'SYSTEM_START',
-      userId: 'system',
-      details: {
-        environment: isLambda ? 'lambda' : 'local',
-      },
-    });
-  } catch (error) {
-    console.error('[App] Failed to save start log:', error);
-  }
 
   return app;
 }

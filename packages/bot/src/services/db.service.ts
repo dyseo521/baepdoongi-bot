@@ -28,7 +28,9 @@ import type {
   SubmissionStatus,
   DepositStatus,
   BulkDMJob,
+  Settings,
 } from '@baepdoongi/shared';
+import { DEFAULT_SETTINGS } from '@baepdoongi/shared';
 
 // DynamoDB 클라이언트 설정
 const client = new DynamoDBClient({
@@ -909,6 +911,68 @@ export async function listBulkDMJobsByEvent(eventId: string): Promise<BulkDMJob[
   );
 
   return (result.Items as BulkDMJob[]) || [];
+}
+
+// ============================================
+// Settings (시스템 설정) 관련 함수
+// ============================================
+
+/**
+ * 시스템 설정을 조회합니다.
+ */
+export async function getSettings(): Promise<Settings> {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: 'SETTINGS',
+        SK: 'GLOBAL',
+      },
+    })
+  );
+
+  if (!result.Item) {
+    return DEFAULT_SETTINGS;
+  }
+
+  return {
+    autoSendInviteEmail: result.Item.autoSendInviteEmail ?? DEFAULT_SETTINGS.autoSendInviteEmail,
+    updatedAt: result.Item.updatedAt,
+    updatedBy: result.Item.updatedBy,
+  };
+}
+
+/**
+ * 시스템 설정을 업데이트합니다.
+ */
+export async function updateSettings(
+  settings: Partial<Settings>,
+  updatedBy: string
+): Promise<Settings> {
+  const now = new Date().toISOString();
+  const currentSettings = await getSettings();
+
+  const newSettings: Settings = {
+    ...currentSettings,
+    ...settings,
+    updatedAt: now,
+    updatedBy,
+  };
+
+  const item = {
+    PK: 'SETTINGS',
+    SK: 'GLOBAL',
+    ...newSettings,
+  };
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: item,
+    })
+  );
+
+  return newSettings;
 }
 
 export { docClient, TABLE_NAME };

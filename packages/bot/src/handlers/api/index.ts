@@ -15,6 +15,7 @@ import { handleStats, handleStatsTrends } from './stats.handler.js';
 import { handleSuggestions } from './suggestions.handler.js';
 import { handleSlackChannels } from './slack-channels.handler.js';
 import { handlePayments } from './payments.handler.js';
+import { handleSettings } from './settings.handler.js';
 import { saveLog } from '../../services/db.service.js';
 
 // 허용된 CORS Origin 목록
@@ -163,6 +164,11 @@ export async function handleApiRequest(
     // /api/payments/*
     if (apiPath.startsWith('/payments')) {
       return await handlePayments(event, apiPath.replace('/payments', ''));
+    }
+
+    // /api/settings
+    if (apiPath.startsWith('/settings')) {
+      return await handleSettings(event, apiPath.replace('/settings', ''));
     }
 
     // 404 Not Found

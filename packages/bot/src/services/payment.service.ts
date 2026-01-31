@@ -24,8 +24,9 @@ import {
   listDepositsByStatus,
   updateSubmissionStatus,
   updateDepositStatus,
+  getSettings,
+  saveLog,
 } from './db.service.js';
-import { saveLog } from './db.service.js';
 import { sendInviteEmail } from './email.service.js';
 import { randomUUID } from 'crypto';
 
@@ -351,6 +352,9 @@ export async function performAutoMatch(deposit: Deposit): Promise<Match | null> 
     },
   });
 
+  // 자동 이메일 발송 시도
+  await tryAutoSendInviteEmail(matchResult.submission.submissionId);
+
   return match;
 }
 
@@ -420,6 +424,34 @@ export async function sendSubmissionInvite(
   }
 
   return success;
+}
+
+/**
+ * 설정에 따라 자동으로 초대 이메일을 발송합니다.
+ * 오류가 발생해도 매칭은 유지됩니다.
+ */
+async function tryAutoSendInviteEmail(submissionId: string): Promise<void> {
+  try {
+    const settings = await getSettings();
+
+    if (!settings.autoSendInviteEmail) {
+      console.log('[Payment] 자동 이메일 발송이 비활성화되어 있습니다.');
+      return;
+    }
+
+    const inviteLink = process.env['SLACK_INVITE_LINK'] || '';
+
+    if (!inviteLink) {
+      console.warn('[Payment] SLACK_INVITE_LINK 환경변수가 설정되지 않았습니다.');
+      return;
+    }
+
+    console.log(`[Payment] 자동 이메일 발송 시도: ${submissionId}`);
+    await sendSubmissionInvite(submissionId, inviteLink);
+  } catch (error) {
+    // 이메일 발송 실패해도 매칭은 유지
+    console.error('[Payment] 자동 이메일 발송 실패:', error);
+  }
 }
 
 /**
