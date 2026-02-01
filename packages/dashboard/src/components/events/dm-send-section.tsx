@@ -382,11 +382,8 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
               {currentJob.failedCount > 0 && ` (${currentJob.failedCount}건 실패)`}
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => {
-            handleReset();
-            onCloseModal?.();
-          }}>
-            닫기
+          <Button variant="secondary" size="sm" onClick={handleReset}>
+            새 DM 발송
           </Button>
         </div>
       )}

@@ -145,11 +145,21 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
   });
 
   // 응답 옵션 목록 (공지되지 않은 이벤트는 기본 옵션 사용)
+  // '전체' 탭을 맨 앞에 추가하여 모든 응답자에게 DM 발송 가능
   const responseOptions = useMemo<EventResponseOption[]>(() => {
+    const allOption: EventResponseOption = {
+      optionId: 'all',
+      label: '전체',
+      emoji: '👥',
+      order: 0,
+    };
+
     if (event?.announcement?.responseOptions) {
-      return [...event.announcement.responseOptions].sort((a, b) => a.order - b.order);
+      const options = [...event.announcement.responseOptions].sort((a, b) => a.order - b.order);
+      return [allOption, ...options];
     }
     return [
+      allOption,
       { optionId: 'attend', label: '참석', emoji: '✅', order: 1 },
       { optionId: 'absent', label: '불참', emoji: '❌', order: 2 },
     ];
@@ -161,6 +171,12 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
   // 현재 탭의 RSVP 목록 (중복 선택 모드 지원)
   const filteredRSVPs = useMemo(() => {
     if (!data?.rsvps) return [];
+
+    // '전체' 탭이면 모든 응답자 반환
+    if (currentTab === 'all') {
+      return data.rsvps;
+    }
+
     return data.rsvps.filter((rsvp) => {
       // 중복 선택 모드인 경우 responseOptionIds 배열 확인
       if (rsvp.responseOptionIds && rsvp.responseOptionIds.length > 0) {
@@ -254,7 +270,10 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
         {/* 탭 네비게이션 */}
         <div className="flex gap-1 border-b border-gray-200 mb-4 overflow-x-auto">
           {responseOptions.map((option) => {
-            const count = data?.summary[option.optionId] || 0;
+            // '전체' 탭은 전체 응답자 수, 나머지는 summary에서 가져옴
+            const count = option.optionId === 'all'
+              ? data?.rsvps?.length || 0
+              : data?.summary[option.optionId] || 0;
             const isActive = currentTab === option.optionId;
             return (
               <button
