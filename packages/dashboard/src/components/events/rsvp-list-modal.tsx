@@ -378,6 +378,8 @@ export function RSVPListModal({ isOpen, onClose, event }: RSVPListModalProps) {
                       formatTime={formatTime}
                       isSelected={selectedMembers.has(rsvp.memberId)}
                       onToggle={() => handleToggleMember(rsvp.memberId)}
+                      showResponseBadge={currentTab === 'all'}
+                      responseOptions={responseOptions}
                     />
                   ))}
                 </div>
@@ -398,9 +400,29 @@ interface RSVPItemProps {
   formatTime: (isoString: string) => string;
   isSelected: boolean;
   onToggle: () => void;
+  showResponseBadge?: boolean;
+  responseOptions?: EventResponseOption[];
 }
 
-function RSVPItem({ rsvp, formatTime, isSelected, onToggle }: RSVPItemProps) {
+function RSVPItem({ rsvp, formatTime, isSelected, onToggle, showResponseBadge, responseOptions }: RSVPItemProps) {
+  // 사용자가 선택한 옵션 라벨 가져오기
+  const selectedOptionLabels = useMemo(() => {
+    if (!showResponseBadge || !responseOptions) return [];
+
+    // responseOptionIds가 있으면 (중복 선택)
+    if (rsvp.responseOptionIds && rsvp.responseOptionIds.length > 0) {
+      return rsvp.responseOptionIds
+        .map(id => responseOptions.find(opt => opt.optionId === id))
+        .filter(Boolean)
+        .map(opt => ({ emoji: opt!.emoji, label: opt!.label }));
+    }
+
+    // 단일 선택
+    const optionId = rsvp.responseOptionId || (rsvp.status === 'attending' ? 'attend' : 'absent');
+    const option = responseOptions.find(opt => opt.optionId === optionId);
+    return option ? [{ emoji: option.emoji, label: option.label }] : [];
+  }, [showResponseBadge, responseOptions, rsvp]);
+
   return (
     <div
       className={clsx(
@@ -443,10 +465,20 @@ function RSVPItem({ rsvp, formatTime, isSelected, onToggle }: RSVPItemProps) {
 
       {/* 정보 */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-gray-900 truncate">
             {rsvp.memberName || rsvp.memberId}
           </span>
+          {/* 응답 옵션 배지 */}
+          {selectedOptionLabels.map((opt, idx) => (
+            <span
+              key={idx}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded"
+            >
+              {opt.emoji && <span>{opt.emoji}</span>}
+              <span>{opt.label}</span>
+            </span>
+          ))}
         </div>
         <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
           <Clock className="w-3 h-3" />

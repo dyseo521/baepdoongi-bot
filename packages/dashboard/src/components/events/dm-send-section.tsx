@@ -383,7 +383,7 @@ export function DMSendSection({ event, selectedUserIds, onDMSent, onCloseModal }
             </div>
           </div>
           <Button variant="secondary" size="sm" onClick={handleReset}>
-            새 DM 발송
+            닫기
           </Button>
         </div>
       )}
