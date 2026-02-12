@@ -366,7 +366,8 @@ export async function performAutoMatch(deposit: Deposit): Promise<Match | null> 
  */
 export async function sendSubmissionInvite(
   submissionId: string,
-  inviteLink: string
+  inviteLink: string,
+  force?: boolean
 ): Promise<boolean> {
   const submission = await getSubmission(submissionId);
 
@@ -375,7 +376,7 @@ export async function sendSubmissionInvite(
     return false;
   }
 
-  if (submission.status !== 'matched' && submission.status !== 'invited') {
+  if (!force && submission.status !== 'matched' && submission.status !== 'invited') {
     console.error('매칭되지 않은 지원서입니다.');
     return false;
   }
@@ -410,6 +411,7 @@ export async function sendSubmissionInvite(
         submissionId,
         email: submission.email,
         name: submission.name,
+        ...(force && { force: true }),
       },
     });
   } else {

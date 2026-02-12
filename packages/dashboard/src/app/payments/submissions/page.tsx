@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard, RotateCw, Unlink, UserCheck, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Clock, Users, MailCheck, MailX, CreditCard, RotateCw, Unlink, UserCheck, Bell, BellOff, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { AuthLayout, PageHeader } from '@/components/layout';
 import { DataTable, Badge, Button, Modal, SubmissionsPageSkeleton, MobileDataCard } from '@/components/ui';
@@ -32,6 +32,7 @@ function SubmissionsContent() {
   const [unmatchConfirmSubmission, setUnmatchConfirmSubmission] = useState<Submission | null>(null);
   const [joinConfirmSubmission, setJoinConfirmSubmission] = useState<Submission | null>(null);
   const [showAutoSendModal, setShowAutoSendModal] = useState(false);
+  const [forceInviteSubmission, setForceInviteSubmission] = useState<Submission | null>(null);
 
   const { data: submissions = [], isLoading: isLoadingSubmissions, isError, error } = useQuery<Submission[]>({
     queryKey: ['submissions'],
@@ -77,10 +78,12 @@ function SubmissionsContent() {
 
   // 모든 훅은 조건부 반환 전에 선언해야 함 (React Rules of Hooks)
   const sendEmailMutation = useMutation({
-    mutationFn: (submissionId: string) => sendInviteEmail(submissionId),
+    mutationFn: ({ submissionId, force }: { submissionId: string; force?: boolean }) =>
+      sendInviteEmail(submissionId, force),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
       setSelectedSubmission(null);
+      setForceInviteSubmission(null);
       alert('초대 메일이 발송되었습니다.');
     },
     onError: (error) => {
@@ -238,13 +241,26 @@ function SubmissionsContent() {
       key: 'actions',
       header: '',
       render: (sub: Submission) => {
+        // pending + 이메일 있는 경우: 수동 초대
+        if (sub.status === 'pending' && sub.email) {
+          return (
+            <Button
+              size="sm"
+              variant="secondary"
+              leftIcon={<Mail className="w-3 h-3" />}
+              onClick={() => setForceInviteSubmission(sub)}
+            >
+              수동 초대
+            </Button>
+          );
+        }
         // 최초 발송: matched 상태 + 미발송
         if (sub.status === 'matched' && !sub.emailSent) {
           return (
             <Button
               size="sm"
               leftIcon={<Mail className="w-3 h-3" />}
-              onClick={() => sendEmailMutation.mutate(sub.submissionId)}
+              onClick={() => sendEmailMutation.mutate({ submissionId: sub.submissionId })}
               isLoading={sendEmailMutation.isPending}
             >
               초대 발송
@@ -312,14 +328,28 @@ function SubmissionsContent() {
         ]}
         onClick={() => setSelectedSubmission(sub)}
         actions={
-          // 최초 발송 (파란색)
+          // pending + 이메일: 수동 초대
+          sub.status === 'pending' && sub.email ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              leftIcon={<Mail className="w-4 h-4" />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setForceInviteSubmission(sub);
+              }}
+              className="w-full"
+            >
+              수동 초대
+            </Button>
+          ) : // 최초 발송 (파란색)
           sub.status === 'matched' && !sub.emailSent ? (
             <Button
               size="sm"
               leftIcon={<Mail className="w-4 h-4" />}
               onClick={(e) => {
                 e.stopPropagation();
-                sendEmailMutation.mutate(sub.submissionId);
+                sendEmailMutation.mutate({ submissionId: sub.submissionId });
               }}
               isLoading={sendEmailMutation.isPending}
               className="w-full"
@@ -437,6 +467,16 @@ function SubmissionsContent() {
             </div>
             {/* 오른쪽: 액션 버튼들 */}
             <div className="flex items-center gap-3">
+              {/* 수동 초대 - pending + 이메일 있는 경우 */}
+              {selectedSubmission?.status === 'pending' && selectedSubmission?.email && (
+                <Button
+                  variant="secondary"
+                  leftIcon={<Mail className="w-4 h-4" />}
+                  onClick={() => setForceInviteSubmission(selectedSubmission)}
+                >
+                  수동 초대
+                </Button>
+              )}
               {/* 매칭 해제 - matched 상태에서만 표시 */}
               {selectedSubmission?.status === 'matched' && (
                 <Button
@@ -452,7 +492,7 @@ function SubmissionsContent() {
               {selectedSubmission?.status === 'matched' && !selectedSubmission?.emailSent && (
                 <Button
                   leftIcon={<Mail className="w-4 h-4" />}
-                  onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
+                  onClick={() => sendEmailMutation.mutate({ submissionId: selectedSubmission.submissionId })}
                   isLoading={sendEmailMutation.isPending}
                 >
                   초대 발송
@@ -473,7 +513,7 @@ function SubmissionsContent() {
                 <Button
                   variant="secondary"
                   leftIcon={<RotateCw className="w-4 h-4" />}
-                  onClick={() => sendEmailMutation.mutate(selectedSubmission.submissionId)}
+                  onClick={() => sendEmailMutation.mutate({ submissionId: selectedSubmission.submissionId })}
                   isLoading={sendEmailMutation.isPending}
                 >
                   재전송
@@ -651,6 +691,57 @@ function SubmissionsContent() {
               <li className="flex items-start gap-2">
                 <span className="text-gray-400">•</span>
                 <span>슬랙 워크스페이스 가입을 수동으로 확인할 때 사용하세요</span>
+              </li>
+            </ul>
+          </div>
+        )}
+      </Modal>
+
+      {/* 수동 초대 확인 모달 */}
+      <Modal
+        isOpen={!!forceInviteSubmission}
+        onClose={() => setForceInviteSubmission(null)}
+        title="수동 초대"
+        titleIcon={<AlertTriangle className="w-5 h-5 text-amber-500" />}
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button
+              variant="ghost"
+              className="flex-1"
+              onClick={() => setForceInviteSubmission(null)}
+            >
+              취소
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                if (forceInviteSubmission) {
+                  sendEmailMutation.mutate({
+                    submissionId: forceInviteSubmission.submissionId,
+                    force: true,
+                  });
+                }
+              }}
+              isLoading={sendEmailMutation.isPending}
+            >
+              초대 발송
+            </Button>
+          </div>
+        }
+      >
+        {forceInviteSubmission && (
+          <div className="p-4 sm:p-6">
+            <p className="text-gray-700 mb-4">
+              <span className="font-medium">{forceInviteSubmission.name}</span>님에게 입금 확인 없이 초대 메일을 발송하시겠습니까?
+            </p>
+            <ul className="text-sm text-gray-600 space-y-1.5">
+              <li className="flex items-start gap-2">
+                <span className="text-amber-500">•</span>
+                <span>입금이 확인되지 않은 상태에서 초대됩니다</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-500">•</span>
+                <span>지원서 상태가 &quot;초대 발송&quot;으로 변경됩니다</span>
               </li>
             </ul>
           </div>

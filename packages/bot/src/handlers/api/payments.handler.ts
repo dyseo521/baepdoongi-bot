@@ -165,13 +165,13 @@ async function handleSendInvite(
 ): Promise<APIGatewayProxyResult> {
   try {
     const body = JSON.parse(event.body || '{}');
-    const { submissionId } = body;
+    const { submissionId, force } = body;
 
     if (!submissionId) {
       return createErrorResponse(400, 'submissionId가 필요합니다');
     }
 
-    const success = await sendSubmissionInvite(submissionId, SLACK_INVITE_LINK);
+    const success = await sendSubmissionInvite(submissionId, SLACK_INVITE_LINK, force);
 
     if (!success) {
       return createErrorResponse(500, '초대 이메일 발송에 실패했습니다');

@@ -277,16 +277,16 @@ export async function manualMatch(
 }
 
 // Send Invite Email
-export async function sendInviteEmail(submissionId: string): Promise<void> {
+export async function sendInviteEmail(submissionId: string, force?: boolean): Promise<void> {
   if (IS_MOCK) {
     const mock = await import('./mock-data');
     await mock.mockDelay(500);
-    console.log(`[Mock] Invite email sent for submission ${submissionId}`);
+    console.log(`[Mock] Invite email sent for submission ${submissionId}${force ? ' (force)' : ''}`);
     return;
   }
   await fetchAPI('/payments/invite', {
     method: 'POST',
-    body: JSON.stringify({ submissionId }),
+    body: JSON.stringify({ submissionId, ...(force && { force: true }) }),
   });
 }
 
