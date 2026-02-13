@@ -193,6 +193,9 @@ function SubmissionsContent() {
       header: '입금액',
       render: (sub: Submission) => {
         if (!sub.matchedDepositId) {
+          if (sub.status === 'invited' || sub.status === 'joined') {
+            return <span className="text-xs text-amber-500">수동 초대</span>;
+          }
           return <span className="text-sm text-gray-400">-</span>;
         }
         const deposit = depositMap.get(sub.matchedDepositId);
@@ -211,7 +214,15 @@ function SubmissionsContent() {
       header: '상태',
       render: (sub: Submission) => {
         const config = statusConfig[sub.status];
-        return <Badge variant={config.variant}>{config.label}</Badge>;
+        const isForceInvited = (sub.status === 'invited' || sub.status === 'joined') && !sub.matchedDepositId;
+        return (
+          <div className="flex flex-col items-start gap-0.5">
+            <Badge variant={config.variant}>{config.label}</Badge>
+            {isForceInvited && (
+              <span className="text-[10px] text-amber-600 font-medium">수동 초대</span>
+            )}
+          </div>
+        );
       },
     },
     {
@@ -295,7 +306,14 @@ function SubmissionsContent() {
       <MobileDataCard
         title={sub.name}
         subtitle={`${sub.studentId} · ${sub.department || '-'}`}
-        badge={<Badge variant={config.variant}>{config.label}</Badge>}
+        badge={
+          <div className="flex items-center gap-1.5">
+            <Badge variant={config.variant}>{config.label}</Badge>
+            {(sub.status === 'invited' || sub.status === 'joined') && !sub.matchedDepositId && (
+              <span className="text-[10px] text-amber-600 font-medium">수동</span>
+            )}
+          </div>
+        }
         metadata={[
           { label: '학년', value: sub.grade || '-' },
           { label: '이메일', value: sub.email || '-' },
@@ -305,6 +323,8 @@ function SubmissionsContent() {
               <span className="text-green-600 font-medium">
                 {new Intl.NumberFormat('ko-KR').format(deposit.amount)}원
               </span>
+            ) : (sub.status === 'invited' || sub.status === 'joined') && !sub.matchedDepositId ? (
+              <span className="text-xs text-amber-500">수동 초대</span>
             ) : '-',
           },
           {
@@ -541,7 +561,12 @@ function SubmissionsContent() {
             <InfoRow
               label="입금액"
               value={(() => {
-                if (!selectedSubmission.matchedDepositId) return '-';
+                if (!selectedSubmission.matchedDepositId) {
+                  if (selectedSubmission.status === 'invited' || selectedSubmission.status === 'joined') {
+                    return '수동 초대 (입금 미확인)';
+                  }
+                  return '-';
+                }
                 const deposit = depositMap.get(selectedSubmission.matchedDepositId);
                 return deposit ? `${new Intl.NumberFormat('ko-KR').format(deposit.amount)}원` : '-';
               })()}
@@ -549,7 +574,11 @@ function SubmissionsContent() {
             />
             <InfoRow
               label="매칭 상태"
-              value={statusConfig[selectedSubmission.status].label}
+              value={
+                (selectedSubmission.status === 'invited' || selectedSubmission.status === 'joined') && !selectedSubmission.matchedDepositId
+                  ? '수동 초대 (입금 미확인)'
+                  : statusConfig[selectedSubmission.status].label
+              }
             />
             <InfoRow
               label="메일 발송"
