@@ -362,6 +362,93 @@ export async function performAutoMatch(deposit: Deposit): Promise<Match | null> 
 }
 
 /**
+ * 지원서 기준으로 pending 입금과 자동 매칭을 시도합니다.
+ * (역방향 매칭: 입금이 먼저 들어오고 지원서가 나중에 제출된 경우)
+ */
+export async function performAutoMatchForSubmission(
+  submission: Submission
+): Promise<Match | null> {
+  const pendingDeposits = await listDepositsByStatus('pending');
+
+  if (pendingDeposits.length === 0) {
+    return null;
+  }
+
+  const candidates: Array<{
+    deposit: Deposit;
+    confidence: number;
+    reason: string;
+    timeDiff: number;
+  }> = [];
+
+  for (const deposit of pendingDeposits) {
+    const { confidence, reason, timeDiff } = calculateMatchScore(
+      submission,
+      deposit.depositorName,
+      new Date(deposit.timestamp)
+    );
+
+    if (confidence > 0) {
+      candidates.push({ deposit, confidence, reason, timeDiff });
+    }
+  }
+
+  candidates.sort((a, b) => b.confidence - a.confidence);
+
+  const bestMatch = candidates[0];
+
+  if (!bestMatch || bestMatch.confidence < MATCHING_CONFIG.AUTO_MATCH_THRESHOLD) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const matchId = `match_${randomUUID()}`;
+
+  const match: Match = {
+    matchId,
+    submissionId: submission.submissionId,
+    depositId: bestMatch.deposit.depositId,
+    resultType: 'auto',
+    confidence: bestMatch.confidence,
+    reason: `${bestMatch.reason} (역방향)`,
+    timeDifferenceMinutes: bestMatch.timeDiff,
+    createdAt: now,
+  };
+
+  await saveMatch(match);
+
+  await updateSubmissionStatus(submission.submissionId, 'matched', {
+    matchedDepositId: bestMatch.deposit.depositId,
+    matchedAt: now,
+  });
+
+  await updateDepositStatus(bestMatch.deposit.depositId, 'matched', {
+    matchedSubmissionId: submission.submissionId,
+    matchedAt: now,
+  });
+
+  await saveLog({
+    logId: `log_${randomUUID()}`,
+    type: 'PAYMENT_MATCH_AUTO',
+    userId: 'system',
+    details: {
+      matchId,
+      submissionId: submission.submissionId,
+      depositId: bestMatch.deposit.depositId,
+      confidence: bestMatch.confidence,
+      reason: bestMatch.reason,
+      submissionName: submission.name,
+      depositorName: bestMatch.deposit.depositorName,
+      direction: 'reverse',
+    },
+  });
+
+  await tryAutoSendInviteEmail(submission.submissionId);
+
+  return match;
+}
+
+/**
  * 매칭된 지원서에 초대 이메일을 발송합니다.
  */
 export async function sendSubmissionInvite(

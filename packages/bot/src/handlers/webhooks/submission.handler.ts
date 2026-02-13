@@ -9,6 +9,7 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { createResponse, createErrorResponse } from './index.js';
 import { saveSubmission, saveLog } from '../../services/db.service.js';
+import { performAutoMatchForSubmission } from '../../services/payment.service.js';
 import { getSecrets } from '../../services/secrets.service.js';
 import type { Submission } from '@baepdoongi/shared';
 import { randomUUID } from 'crypto';
@@ -120,6 +121,24 @@ export async function handleSubmissionWebhook(
     });
 
     console.log(`[Submission Webhook] 지원서 수신: ${name} (${studentId})`);
+
+    // 역방향 자동 매칭 시도 (입금이 먼저 들어온 경우)
+    const match = await performAutoMatchForSubmission(submission);
+
+    if (match) {
+      console.log(
+        `[Submission Webhook] 역방향 자동 매칭 성공: ${submissionId} → ${match.depositId} (신뢰도: ${match.confidence}%)`
+      );
+
+      return createResponse(200, {
+        success: true,
+        submissionId,
+        matched: true,
+        matchId: match.matchId,
+        confidence: match.confidence,
+        message: '지원서가 접수되고 자동 매칭되었습니다.',
+      });
+    }
 
     return createResponse(200, {
       success: true,
