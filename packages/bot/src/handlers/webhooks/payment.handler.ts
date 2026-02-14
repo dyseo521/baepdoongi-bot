@@ -78,6 +78,15 @@ export async function handlePaymentWebhook(
 
     const { title, text } = body;
 
+    // 출금 알림 무시
+    if (title.includes('출금')) {
+      console.log(`[Payment Webhook] 출금 알림, 무시: ${title}`);
+      return createResponse(200, {
+        success: false,
+        message: '출금 알림입니다. 무시됩니다.',
+      });
+    }
+
     // 모임통장 입금만 처리 (다른 계좌 알림 무시)
     if (!text.includes('모임통장')) {
       console.log(`[Payment Webhook] 모임통장 아님, 무시: ${text}`);
